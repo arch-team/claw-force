@@ -3,6 +3,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as cdk from 'aws-cdk-lib/core';
+import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceMonitoringProps {
   /** Log retention in days (default: 30) */
@@ -25,7 +26,7 @@ export class ClawForceMonitoring extends Construct {
   constructor(scope: Construct, id: string, props: ClawForceMonitoringProps = {}) {
     super(scope, id);
 
-    const retentionDays = props.logRetentionDays ?? 30;
+    const retentionDays = props.logRetentionDays ?? DEFAULTS.LOG_RETENTION_DAYS;
     const retention = this.mapRetention(retentionDays);
 
     // Log Groups

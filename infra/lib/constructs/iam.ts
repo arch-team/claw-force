@@ -1,6 +1,8 @@
 import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cdk from 'aws-cdk-lib/core';
+import { NagSuppressions } from 'cdk-nag';
+import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceIamProps {
   /** AWS region for Bedrock access (default: us-east-1) */
@@ -21,7 +23,7 @@ export class ClawForceIam extends Construct {
   constructor(scope: Construct, id: string, props: ClawForceIamProps = {}) {
     super(scope, id);
 
-    const region = props.bedrockRegion ?? 'us-east-1';
+    const region = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
 
     this.role = new iam.Role(this, 'Role', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -64,5 +66,22 @@ export class ClawForceIam extends Construct {
     this.instanceProfile = new iam.InstanceProfile(this, 'InstanceProfile', {
       role: this.role,
     });
+
+    // CDK Nag suppressions (resource-level)
+    NagSuppressions.addResourceSuppressions(
+      this.role,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'CloudWatchAgentServerPolicy is the AWS recommended managed policy for CW Agent',
+        },
+        {
+          id: 'AwsSolutions-IAM5',
+          reason:
+            'Bedrock ListFoundationModels/ListInferenceProfiles require wildcard resource; foundation-model/* is the narrowest scope for InvokeModel across all models',
+        },
+      ],
+      true,
+    );
   }
 }

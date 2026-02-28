@@ -1,12 +1,14 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
+import { NagSuppressions } from 'cdk-nag';
 import { ClawForceNetworking } from '../constructs/networking';
 import { ClawForceIam } from '../constructs/iam';
 import { ClawForceCompute } from '../constructs/compute';
 import { ClawForceAlb } from '../constructs/alb';
 import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
+import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
 
 export interface ClawForceStackProps extends cdk.StackProps {
   /** CIDR range allowed for SSH and management access */
@@ -31,8 +33,8 @@ export class ClawForceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ClawForceStackProps = {}) {
     super(scope, id, props);
 
-    const allowedCidr = props.allowedCidr ?? '0.0.0.0/0';
-    const bedrockRegion = props.bedrockRegion ?? 'us-east-1';
+    const allowedCidr = props.allowedCidr ?? DEFAULTS.ALLOWED_CIDR;
+    const bedrockRegion = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
     const enableAlb = props.enableAlb ?? true;
 
     // Use default VPC (consistent with PoC approach)
@@ -82,19 +84,19 @@ export class ClawForceStack extends cdk.Stack {
       // Add ALB->EC2 ingress rules to the instance SG
       networking.securityGroup.addIngressRule(
         ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(18789),
+        ec2.Port.tcp(OPENCLAW_PORTS.GATEWAY),
         'OpenClaw Gateway from ALB',
       );
 
       networking.securityGroup.addIngressRule(
         ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(18790),
+        ec2.Port.tcp(OPENCLAW_PORTS.CONTROL_UI),
         'OpenClaw Control UI from ALB',
       );
 
       networking.securityGroup.addIngressRule(
         ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(18791),
+        ec2.Port.tcp(OPENCLAW_PORTS.BROWSER),
         'OpenClaw Browser from ALB',
       );
 
@@ -108,18 +110,31 @@ export class ClawForceStack extends cdk.Stack {
 
       networking.securityGroup.addIngressRule(
         peer,
-        ec2.Port.tcp(18789),
+        ec2.Port.tcp(OPENCLAW_PORTS.GATEWAY),
         'OpenClaw Gateway WebSocket',
       );
 
-      networking.securityGroup.addIngressRule(peer, ec2.Port.tcp(18790), 'OpenClaw Control UI');
+      networking.securityGroup.addIngressRule(
+        peer,
+        ec2.Port.tcp(OPENCLAW_PORTS.CONTROL_UI),
+        'OpenClaw Control UI',
+      );
 
       networking.securityGroup.addIngressRule(
         peer,
-        ec2.Port.tcp(18791),
+        ec2.Port.tcp(OPENCLAW_PORTS.BROWSER),
         'OpenClaw Browser Control Server',
       );
     }
+
+    // CDK Nag: VPC3 on imported default VPC (cannot suppress at resource level)
+    NagSuppressions.addStackSuppressions(this, [
+      {
+        id: 'AwsSolutions-VPC3',
+        reason:
+          'Using default VPC for PoC/dev stage; custom VPC with flow logs planned for production',
+      },
+    ]);
 
     // Outputs
     new cdk.CfnOutput(this, 'InstanceId', {

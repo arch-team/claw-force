@@ -1,5 +1,6 @@
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import { NagSuppressions } from 'cdk-nag';
 
 export interface ClawForceNetworkingProps {
   /** VPC to place the security group in */
@@ -34,6 +35,19 @@ export class ClawForceNetworking extends Construct {
       ec2.Peer.ipv4(props.allowedCidr),
       ec2.Port.tcp(22),
       'SSH access from allowed IP',
+    );
+
+    // CDK Nag: EC23 triggers when allowedCidr is 0.0.0.0/0 (dev default)
+    NagSuppressions.addResourceSuppressions(
+      this.securityGroup,
+      [
+        {
+          id: 'AwsSolutions-EC23',
+          reason:
+            'SSH allowedCidr defaults to 0.0.0.0/0 for dev; production deployments should restrict to specific IP ranges',
+        },
+      ],
+      true,
     );
   }
 }
