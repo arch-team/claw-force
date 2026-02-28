@@ -10,21 +10,31 @@
 
 ## 业务目标
 
-（待定义 - 首次 `/pace-retro` 时引导填充）
+将 OpenClaw 从开源个人 AI 助手转变为企业级 AI 员工管理平台，实现安全、可重复、可观测的自动化部署。
 
 ## 价值功能树
 
 <!-- 格式：`- [BR] 业务结果` / `  - [PF] 产品功能（用户故事）` / `    - [CR] 变更请求（backlog/CR-XXX.md）` -->
 
-（待首个 CR 创建时自动填充）
+- [BR-001] 企业级 AI 员工平台基础设施 <!-- source: claude -->
+  - [PF-001] ⏳ IaC 自动化部署 — 将 PoC 手动部署转为 Terraform/CDK，涵盖 EC2+SG+IAM+EBS 全栈，内嵌所有 PoC 修复项 <!-- source: claude -->
+  - [PF-002] ⏳ Bedrock 模型适配层 — OpenClaw 中适配 Inference Profile 格式、模型发现、IAM 策略自动配置 <!-- source: claude -->
+  - [PF-003] ⏳ 企业级网络安全基线 — ALB + HTTPS + WAF 替代直接端口暴露，SG 策略优化 <!-- source: claude -->
+  - [PF-004] ⏳ 基础运维可观测性 — CloudWatch 日志/指标集成，Gateway 健康检查，基本告警 <!-- source: claude -->
+- [BR-002] 企业级用户管理与安全 <!-- source: claude -->
+  - [PF-005] ⏳ 设备配对企业化与 SSO 集成 <!-- source: claude -->
+  - [PF-006] ⏳ Gateway OAuth 认证升级 <!-- source: claude -->
+  - [PF-007] ⏳ 多用户隔离（multi-tenant） <!-- source: claude -->
+- [BR-003] 生产级运维与高可用 <!-- source: claude -->
+  - [PF-008] ⏳ 数据库外置与高可用方案 <!-- source: claude -->
 
 ---
 
 ## 范围
 
-**做什么**：（待定义）
+**做什么**：基于 OpenClaw 开源框架进行企业化适配，包括 AWS 基础设施自动化、Bedrock 模型集成、网络安全加固、运维监控
 
-**不做什么**：（待定义）
+**不做什么**：不 fork OpenClaw 源码（优先通过配置和外部集成方式适配）、不构建自有 AI 推理层、不开发移动端
 
 ---
 
