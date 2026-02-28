@@ -1,7 +1,7 @@
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 
-export interface NetworkingProps {
+export interface ClawForceNetworkingProps {
   /** VPC to place the security group in */
   vpc: ec2.IVpc;
   /** CIDR range allowed for SSH management access (e.g. "72.21.198.64/32") */
@@ -19,7 +19,7 @@ export interface NetworkingProps {
 export class ClawForceNetworking extends Construct {
   public readonly securityGroup: ec2.SecurityGroup;
 
-  constructor(scope: Construct, id: string, props: NetworkingProps) {
+  constructor(scope: Construct, id: string, props: ClawForceNetworkingProps) {
     super(scope, id);
 
     this.securityGroup = new ec2.SecurityGroup(this, 'SecurityGroup', {
