@@ -92,6 +92,31 @@ export class ClawForceStack extends cdk.Stack {
       new ClawForceWaf(this, 'Waf', {
         albArn: albConstruct.alb.loadBalancerArn,
       });
+
+      // Configure Gateway CORS to allow ALB origin (CR-008)
+      // OpenClaw validates controlUi.allowedOrigins against the request origin;
+      // wildcard "*" is not supported, so we inject the concrete ALB DNS.
+      // These commands run after docker compose up (appended to user-data),
+      // then restart the container to pick up the updated config.
+      const albDns = albConstruct.alb.loadBalancerDnsName;
+      const protocol = props.certificateArn ? 'https' : 'http';
+      compute.instance.userData.addCommands(
+        '# === Configure Gateway CORS for ALB (CR-008) ===',
+        `export ALB_ORIGIN="${protocol}://${albDns}"`,
+        'python3 << \'PYEOF\'',
+        'import json, os',
+        'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
+        'with open(cfg_path) as f:',
+        '    cfg = json.load(f)',
+        'origin = os.environ["ALB_ORIGIN"]',
+        'cfg["gateway"]["controlUi"]["allowedOrigins"] = [origin]',
+        'with open(cfg_path, "w") as f:',
+        '    json.dump(cfg, f, indent=2)',
+        'PYEOF',
+        '# Restart Gateway to apply CORS configuration',
+        'su - ubuntu -c "cd ~/openclaw && docker compose restart"',
+        '',
+      );
     } else {
       // Direct mode: Gateway port from allowed CIDR (serves both Gateway + Control UI)
       const peer = ec2.Peer.ipv4(allowedCidr);
