@@ -4,18 +4,17 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 export interface NetworkingProps {
   /** VPC to place the security group in */
   vpc: ec2.IVpc;
-  /** CIDR range allowed for SSH and management access (e.g. "72.21.198.64/32") */
+  /** CIDR range allowed for SSH management access (e.g. "72.21.198.64/32") */
   allowedCidr: string;
 }
 
 /**
- * Security Group construct for ClawForce OpenClaw deployment.
+ * Security Group construct for ClawForce EC2 instance.
  *
- * Ports based on PoC verification (poc-report.md):
- * - 22: SSH access
- * - 18789: OpenClaw Gateway (WebSocket)
- * - 18790: Control UI
- * - 18791: Browser Control Server
+ * Creates base SG with SSH access only. OpenClaw service ports (18789/18790/18791)
+ * are managed by the stack based on ALB mode:
+ * - ALB enabled: ports accept ALB security group traffic only
+ * - ALB disabled: ports accept allowedCidr traffic directly (backward compatible)
  */
 export class ClawForceNetworking extends Construct {
   public readonly securityGroup: ec2.SecurityGroup;
@@ -30,34 +29,11 @@ export class ClawForceNetworking extends Construct {
       allowAllOutbound: true,
     });
 
-    const peer = ec2.Peer.ipv4(props.allowedCidr);
-
-    // SSH access
+    // SSH access - always from allowed CIDR (management port)
     this.securityGroup.addIngressRule(
-      peer,
+      ec2.Peer.ipv4(props.allowedCidr),
       ec2.Port.tcp(22),
       'SSH access from allowed IP',
-    );
-
-    // OpenClaw Gateway (WebSocket)
-    this.securityGroup.addIngressRule(
-      peer,
-      ec2.Port.tcp(18789),
-      'OpenClaw Gateway WebSocket',
-    );
-
-    // Control UI
-    this.securityGroup.addIngressRule(
-      peer,
-      ec2.Port.tcp(18790),
-      'OpenClaw Control UI',
-    );
-
-    // Browser Control Server
-    this.securityGroup.addIngressRule(
-      peer,
-      ec2.Port.tcp(18791),
-      'OpenClaw Browser Control Server',
     );
   }
 }

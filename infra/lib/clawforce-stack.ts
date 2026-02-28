@@ -4,6 +4,9 @@ import { Construct } from 'constructs';
 import { ClawForceNetworking } from './constructs/networking';
 import { ClawForceIam } from './constructs/iam';
 import { ClawForceCompute } from './constructs/compute';
+import { ClawForceAlb } from './constructs/alb';
+import { ClawForceWaf } from './constructs/waf';
+import { ClawForceMonitoring } from './constructs/monitoring';
 
 export interface ClawForceStackProps extends cdk.StackProps {
   /** CIDR range allowed for SSH and management access */
@@ -18,6 +21,10 @@ export interface ClawForceStackProps extends cdk.StackProps {
   bedrockRegion?: string;
   /** Bedrock model ID in Inference Profile format */
   bedrockModelId?: string;
+  /** ACM certificate ARN for HTTPS (optional - HTTP only if omitted) */
+  certificateArn?: string;
+  /** Enable ALB + WAF (default: true) */
+  enableAlb?: boolean;
 }
 
 export class ClawForceStack extends cdk.Stack {
@@ -26,22 +33,26 @@ export class ClawForceStack extends cdk.Stack {
 
     const allowedCidr = props.allowedCidr ?? '0.0.0.0/0';
     const bedrockRegion = props.bedrockRegion ?? 'us-east-1';
+    const enableAlb = props.enableAlb ?? true;
 
     // Use default VPC (consistent with PoC approach)
     const vpc = ec2.Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true });
-
-    // Networking: Security Group
-    const networking = new ClawForceNetworking(this, 'Networking', {
-      vpc,
-      allowedCidr,
-    });
 
     // IAM: Role + Instance Profile + Bedrock policy
     const iamResources = new ClawForceIam(this, 'Iam', {
       bedrockRegion,
     });
 
-    // Compute: EC2 + EBS + User Data with all PoC fixes
+    // Monitoring: CloudWatch Log Groups + Agent config (phase 1 - before compute)
+    const monitoring = new ClawForceMonitoring(this, 'Monitoring');
+
+    // Networking: Security Group (SSH only - OpenClaw ports managed below)
+    const networking = new ClawForceNetworking(this, 'Networking', {
+      vpc,
+      allowedCidr,
+    });
+
+    // Compute: EC2 + EBS + User Data with all PoC fixes + CloudWatch Agent
     const compute = new ClawForceCompute(this, 'Compute', {
       vpc,
       securityGroup: networking.securityGroup,
@@ -51,7 +62,68 @@ export class ClawForceStack extends cdk.Stack {
       keyPairName: props.keyPairName,
       bedrockRegion,
       bedrockModelId: props.bedrockModelId,
+      cloudWatchAgentConfig: monitoring.getAgentConfig(),
     });
+
+    // Monitoring: Alarms (phase 2 - after compute)
+    monitoring.addAlarms(compute.instance);
+
+    // OpenClaw service port rules: ALB mode vs direct mode
+    let albConstruct: ClawForceAlb | undefined;
+
+    if (enableAlb) {
+      // ALB: Load Balancer + Target Groups + Listeners
+      albConstruct = new ClawForceAlb(this, 'Alb', {
+        vpc,
+        instance: compute.instance,
+        certificateArn: props.certificateArn,
+      });
+
+      // Add ALB->EC2 ingress rules to the instance SG
+      networking.securityGroup.addIngressRule(
+        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
+        ec2.Port.tcp(18789),
+        'OpenClaw Gateway from ALB',
+      );
+
+      networking.securityGroup.addIngressRule(
+        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
+        ec2.Port.tcp(18790),
+        'OpenClaw Control UI from ALB',
+      );
+
+      networking.securityGroup.addIngressRule(
+        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
+        ec2.Port.tcp(18791),
+        'OpenClaw Browser from ALB',
+      );
+
+      // WAF: WebACL + AWS Managed Rules -> ALB
+      new ClawForceWaf(this, 'Waf', {
+        albArn: albConstruct.alb.loadBalancerArn,
+      });
+    } else {
+      // Direct mode: OpenClaw ports from allowed CIDR (backward compatible with CR-001)
+      const peer = ec2.Peer.ipv4(allowedCidr);
+
+      networking.securityGroup.addIngressRule(
+        peer,
+        ec2.Port.tcp(18789),
+        'OpenClaw Gateway WebSocket',
+      );
+
+      networking.securityGroup.addIngressRule(
+        peer,
+        ec2.Port.tcp(18790),
+        'OpenClaw Control UI',
+      );
+
+      networking.securityGroup.addIngressRule(
+        peer,
+        ec2.Port.tcp(18791),
+        'OpenClaw Browser Control Server',
+      );
+    }
 
     // Outputs
     new cdk.CfnOutput(this, 'InstanceId', {
@@ -69,14 +141,33 @@ export class ClawForceStack extends cdk.Stack {
       description: 'SSH connection command',
     });
 
-    new cdk.CfnOutput(this, 'GatewayUrl', {
-      value: `ws://${compute.instance.instancePublicIp}:18789`,
-      description: 'OpenClaw Gateway WebSocket URL',
-    });
+    if (albConstruct) {
+      const protocol = props.certificateArn ? 'https' : 'http';
 
-    new cdk.CfnOutput(this, 'ControlUiUrl', {
-      value: `http://${compute.instance.instancePublicIp}:18790`,
-      description: 'OpenClaw Control UI URL',
-    });
+      new cdk.CfnOutput(this, 'AlbDnsName', {
+        value: albConstruct.alb.loadBalancerDnsName,
+        description: 'ALB DNS Name',
+      });
+
+      new cdk.CfnOutput(this, 'ControlUiUrl', {
+        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}`,
+        description: 'OpenClaw Control UI URL (via ALB)',
+      });
+
+      new cdk.CfnOutput(this, 'GatewayUrl', {
+        value: `${protocol === 'https' ? 'wss' : 'ws'}://${albConstruct.alb.loadBalancerDnsName}/ws`,
+        description: 'OpenClaw Gateway WebSocket URL (via ALB)',
+      });
+    } else {
+      new cdk.CfnOutput(this, 'GatewayUrl', {
+        value: `ws://${compute.instance.instancePublicIp}:18789`,
+        description: 'OpenClaw Gateway WebSocket URL',
+      });
+
+      new cdk.CfnOutput(this, 'ControlUiUrl', {
+        value: `http://${compute.instance.instancePublicIp}:18790`,
+        description: 'OpenClaw Control UI URL',
+      });
+    }
   }
 }

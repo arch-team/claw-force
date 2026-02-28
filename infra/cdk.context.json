@@ -37,5 +37,56 @@
       }
     ]
   },
-  "ami:account=897473508751:filters.image-type.0=machine:filters.name.0=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*:filters.state.0=available:owners.0=099720109477:region=us-west-2": "ami-0e5e1413a3bf2d262"
+  "ami:account=897473508751:filters.image-type.0=machine:filters.name.0=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*:filters.state.0=available:owners.0=099720109477:region=us-west-2": "ami-0e5e1413a3bf2d262",
+  "vpc-provider:account=897473508751:filter.isDefault=true:region=us-east-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-00740ed441b5babef",
+    "vpcCidrBlock": "172.31.0.0/16",
+    "ownerAccountId": "897473508751",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0c62788c15ee3bcd6",
+            "cidr": "172.31.80.0/20",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-05e40e1100b330f46"
+          },
+          {
+            "subnetId": "subnet-0031a4baee3155fdc",
+            "cidr": "172.31.16.0/20",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-05e40e1100b330f46"
+          },
+          {
+            "subnetId": "subnet-0be17de86088c0dab",
+            "cidr": "172.31.32.0/20",
+            "availabilityZone": "us-east-1c",
+            "routeTableId": "rtb-05e40e1100b330f46"
+          },
+          {
+            "subnetId": "subnet-040d2dbbb584e8a9f",
+            "cidr": "172.31.0.0/20",
+            "availabilityZone": "us-east-1d",
+            "routeTableId": "rtb-05e40e1100b330f46"
+          },
+          {
+            "subnetId": "subnet-08dac3453ff00e6f4",
+            "cidr": "172.31.48.0/20",
+            "availabilityZone": "us-east-1e",
+            "routeTableId": "rtb-05e40e1100b330f46"
+          },
+          {
+            "subnetId": "subnet-0e1dc4fb1551de8fb",
+            "cidr": "172.31.64.0/20",
+            "availabilityZone": "us-east-1f",
+            "routeTableId": "rtb-05e40e1100b330f46"
+          }
+        ]
+      }
+    ]
+  },
+  "ami:account=897473508751:filters.image-type.0=machine:filters.name.0=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*:filters.state.0=available:owners.0=099720109477:region=us-east-1": "ami-0071174ad8cbb9e17"
 }

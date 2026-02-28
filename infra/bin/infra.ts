@@ -17,4 +17,8 @@ new ClawForceStack(app, 'ClawForceStack', {
   keyPairName: app.node.tryGetContext('keyPairName'),
   bedrockRegion: app.node.tryGetContext('bedrockRegion') ?? 'us-east-1',
   bedrockModelId: app.node.tryGetContext('bedrockModelId'),
+
+  // Network security (ALB + WAF)
+  enableAlb: app.node.tryGetContext('enableAlb') !== 'false',
+  certificateArn: app.node.tryGetContext('certificateArn'),
 });
