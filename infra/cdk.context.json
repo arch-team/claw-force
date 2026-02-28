@@ -1,0 +1,41 @@
+{
+  "vpc-provider:account=897473508751:filter.isDefault=true:region=us-west-2:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-02ae788da3d7b6b10",
+    "vpcCidrBlock": "172.31.0.0/16",
+    "ownerAccountId": "897473508751",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0dc59311da3595b55",
+            "cidr": "172.31.16.0/20",
+            "availabilityZone": "us-west-2a",
+            "routeTableId": "rtb-002618ea2c5a45d7a"
+          },
+          {
+            "subnetId": "subnet-094c153fba567caf1",
+            "cidr": "172.31.32.0/20",
+            "availabilityZone": "us-west-2b",
+            "routeTableId": "rtb-002618ea2c5a45d7a"
+          },
+          {
+            "subnetId": "subnet-0604c5e099a0cfa0d",
+            "cidr": "172.31.0.0/20",
+            "availabilityZone": "us-west-2c",
+            "routeTableId": "rtb-002618ea2c5a45d7a"
+          },
+          {
+            "subnetId": "subnet-02501a403b10c4061",
+            "cidr": "172.31.48.0/20",
+            "availabilityZone": "us-west-2d",
+            "routeTableId": "rtb-002618ea2c5a45d7a"
+          }
+        ]
+      }
+    ]
+  },
+  "ami:account=897473508751:filters.image-type.0=machine:filters.name.0=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*:filters.state.0=available:owners.0=099720109477:region=us-west-2": "ami-0e5e1413a3bf2d262"
+}
