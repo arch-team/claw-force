@@ -1,5 +1,5 @@
 import { Template, Match } from 'aws-cdk-lib/assertions';
-import { ClawForceStack } from '../lib/clawforce-stack';
+import { ClawForceStack } from '../lib/stacks/clawforce-stack';
 import { createTestApp, TEST_ACCOUNT, TEST_REGION } from './test-helpers';
 
 describe('ClawForceStack - ALB mode (default)', () => {

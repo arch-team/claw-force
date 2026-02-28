@@ -4,7 +4,9 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { Template, Match } from 'aws-cdk-lib/assertions';
 import { ClawForceCompute } from '../lib/constructs/compute';
 
-function createComputeStack(overrides: Partial<ConstructorParameters<typeof ClawForceCompute>[2]> = {}) {
+function createComputeStack(
+  overrides: Partial<ConstructorParameters<typeof ClawForceCompute>[2]> = {},
+) {
   const app = new cdk.App({
     context: {
       'ami:account=123456789012:filters.image-type.0=machine:filters.name.0=ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*:filters.state.0=available:owners.0=099720109477:region=us-east-1':
