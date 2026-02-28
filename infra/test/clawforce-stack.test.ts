@@ -30,15 +30,11 @@ describe('ClawForceStack - ALB mode (default)', () => {
     });
   });
 
-  test('creates two target groups for OpenClaw services', () => {
-    template.resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 2);
+  test('creates single target group for Gateway (serves Control UI + WebSocket)', () => {
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 1);
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
       Port: 18789,
       Name: 'ClawForce-Gateway',
-    });
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
-      Port: 18789,
-      Name: 'ClawForce-ControlUI',
     });
   });
 
