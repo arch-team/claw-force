@@ -3,6 +3,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as cdk from 'aws-cdk-lib/core';
+import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceMonitoringProps {
   /** Log retention in days (default: 30) */
@@ -25,7 +26,7 @@ export class ClawForceMonitoring extends Construct {
   constructor(scope: Construct, id: string, props: ClawForceMonitoringProps = {}) {
     super(scope, id);
 
-    const retentionDays = props.logRetentionDays ?? 30;
+    const retentionDays = props.logRetentionDays ?? DEFAULTS.LOG_RETENTION_DAYS;
     const retention = this.mapRetention(retentionDays);
 
     // Log Groups
@@ -79,29 +80,33 @@ export class ClawForceMonitoring extends Construct {
 
   /** Generate CloudWatch Agent config JSON for User Data injection */
   public getAgentConfig(): string {
-    return JSON.stringify({
-      agent: { metrics_collection_interval: 60, run_as_user: 'root' },
-      logs: {
-        logs_collected: {
-          files: {
-            collect_list: [
-              {
-                file_path: '/var/log/clawforce-setup.log',
-                log_group_name: this.setupLogGroup.logGroupName,
-                log_stream_name: '{instance_id}/setup',
-              },
-            ],
+    return JSON.stringify(
+      {
+        agent: { metrics_collection_interval: 60, run_as_user: 'root' },
+        logs: {
+          logs_collected: {
+            files: {
+              collect_list: [
+                {
+                  file_path: '/var/log/clawforce-setup.log',
+                  log_group_name: this.setupLogGroup.logGroupName,
+                  log_stream_name: '{instance_id}/setup',
+                },
+              ],
+            },
+          },
+        },
+        metrics: {
+          namespace: 'ClawForce',
+          metrics_collected: {
+            disk: { measurement: ['used_percent'], resources: ['/'] },
+            mem: { measurement: ['mem_used_percent'] },
           },
         },
       },
-      metrics: {
-        namespace: 'ClawForce',
-        metrics_collected: {
-          disk: { measurement: ['used_percent'], resources: ['/'] },
-          mem: { measurement: ['mem_used_percent'] },
-        },
-      },
-    }, null, 2);
+      null,
+      2,
+    );
   }
 
   private mapRetention(days: number): logs.RetentionDays {

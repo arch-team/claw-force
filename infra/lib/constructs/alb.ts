@@ -4,6 +4,8 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cdk from 'aws-cdk-lib/core';
+import { NagSuppressions } from 'cdk-nag';
+import { OPENCLAW_PORTS } from '../config/constants';
 
 export interface ClawForceAlbProps {
   /** VPC for the ALB */
@@ -61,12 +63,12 @@ export class ClawForceAlb extends Construct {
     // Target Groups for each OpenClaw service
     const controlUiTarget = new elbv2.ApplicationTargetGroup(this, 'ControlUiTG', {
       vpc: props.vpc,
-      port: 18790,
+      port: OPENCLAW_PORTS.CONTROL_UI,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new targets.InstanceTarget(props.instance, 18790)],
+      targets: [new targets.InstanceTarget(props.instance, OPENCLAW_PORTS.CONTROL_UI)],
       healthCheck: {
         path: '/',
-        port: '18790',
+        port: String(OPENCLAW_PORTS.CONTROL_UI),
         healthyHttpCodes: '200-399',
       },
       targetGroupName: 'ClawForce-ControlUI',
@@ -74,12 +76,12 @@ export class ClawForceAlb extends Construct {
 
     const gatewayTarget = new elbv2.ApplicationTargetGroup(this, 'GatewayTG', {
       vpc: props.vpc,
-      port: 18789,
+      port: OPENCLAW_PORTS.GATEWAY,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new targets.InstanceTarget(props.instance, 18789)],
+      targets: [new targets.InstanceTarget(props.instance, OPENCLAW_PORTS.GATEWAY)],
       healthCheck: {
         path: '/',
-        port: '18789',
+        port: String(OPENCLAW_PORTS.GATEWAY),
         healthyHttpCodes: '200-399,426',
       },
       targetGroupName: 'ClawForce-Gateway',
@@ -88,12 +90,12 @@ export class ClawForceAlb extends Construct {
 
     const browserTarget = new elbv2.ApplicationTargetGroup(this, 'BrowserTG', {
       vpc: props.vpc,
-      port: 18791,
+      port: OPENCLAW_PORTS.BROWSER,
       protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new targets.InstanceTarget(props.instance, 18791)],
+      targets: [new targets.InstanceTarget(props.instance, OPENCLAW_PORTS.BROWSER)],
       healthCheck: {
         path: '/',
-        port: '18791',
+        port: String(OPENCLAW_PORTS.BROWSER),
         healthyHttpCodes: '200-399',
       },
       targetGroupName: 'ClawForce-Browser',
@@ -157,5 +159,29 @@ export class ClawForceAlb extends Construct {
         targetGroups: [browserTarget],
       });
     }
+
+    // CDK Nag suppressions (resource-level)
+    NagSuppressions.addResourceSuppressions(
+      this.alb,
+      [
+        {
+          id: 'AwsSolutions-ELB2',
+          reason:
+            'ALB access logs require an S3 bucket; deferred to cost-optimization phase to avoid unnecessary S3 costs',
+        },
+      ],
+      true,
+    );
+    NagSuppressions.addResourceSuppressions(
+      this.albSecurityGroup,
+      [
+        {
+          id: 'AwsSolutions-EC23',
+          reason:
+            'ALB security group intentionally allows 0.0.0.0/0 on ports 80/443 as it is an internet-facing load balancer',
+        },
+      ],
+      true,
+    );
   }
 }

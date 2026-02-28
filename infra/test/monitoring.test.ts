@@ -102,12 +102,9 @@ describe('ClawForceMonitoring', () => {
       const monitoring = new ClawForceMonitoring(stack, 'Monitoring');
       const config = JSON.parse(monitoring.getAgentConfig());
 
-      const collectList =
-        config.logs.logs_collected.files.collect_list;
+      const collectList = config.logs.logs_collected.files.collect_list;
       expect(collectList).toHaveLength(1);
-      expect(collectList[0].file_path).toBe(
-        '/var/log/clawforce-setup.log',
-      );
+      expect(collectList[0].file_path).toBe('/var/log/clawforce-setup.log');
       // log_group_name is a CDK Token reference, verify it exists
       expect(collectList[0]).toHaveProperty('log_group_name');
     });

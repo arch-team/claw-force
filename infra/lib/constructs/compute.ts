@@ -1,7 +1,9 @@
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as cdk from 'aws-cdk-lib/core';
+import { NagSuppressions } from 'cdk-nag';
+import { buildUserDataCommands } from './user-data';
+import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceComputeProps {
   /** VPC to launch the instance in */
@@ -42,10 +44,10 @@ export class ClawForceCompute extends Construct {
   constructor(scope: Construct, id: string, props: ClawForceComputeProps) {
     super(scope, id);
 
-    const instanceType = new ec2.InstanceType(props.instanceType ?? 't3.medium');
-    const volumeSize = props.volumeSize ?? 30;
-    const bedrockRegion = props.bedrockRegion ?? 'us-east-1';
-    const bedrockModelId = props.bedrockModelId ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+    const instanceType = new ec2.InstanceType(props.instanceType ?? DEFAULTS.INSTANCE_TYPE);
+    const volumeSize = props.volumeSize ?? DEFAULTS.VOLUME_SIZE;
+    const bedrockRegion = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
+    const bedrockModelId = props.bedrockModelId ?? DEFAULTS.BEDROCK_MODEL_ID;
 
     // Ubuntu 24.04 LTS AMI lookup
     const machineImage = ec2.MachineImage.lookup({
@@ -53,116 +55,14 @@ export class ClawForceCompute extends Construct {
       owners: ['099720109477'], // Canonical
     });
 
-    // User Data script with all PoC fixes embedded
+    // User Data script with all PoC fixes (see user-data.ts for details)
     const userData = ec2.UserData.forLinux();
     userData.addCommands(
-      '#!/bin/bash',
-      'set -euo pipefail',
-      'exec > >(tee /var/log/clawforce-setup.log) 2>&1',
-      '',
-      '# === System Setup ===',
-      'export DEBIAN_FRONTEND=noninteractive',
-      'apt-get update -y',
-      'apt-get upgrade -y',
-      '',
-      '# PoC fix #2: Ubuntu 24.04 uses ssh.service (not sshd.service)',
-      'sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config',
-      'sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin no/" /etc/ssh/sshd_config',
-      'systemctl restart ssh.service',
-      '',
-      '# === Docker Installation ===',
-      'apt-get install -y ca-certificates curl gnupg',
-      'install -m 0755 -d /etc/apt/keyrings',
-      'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg',
-      'chmod a+r /etc/apt/keyrings/docker.gpg',
-      'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null',
-      'apt-get update -y',
-      'apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin',
-      'usermod -aG docker ubuntu',
-      '',
-      '# === OpenClaw Deployment (build from source) ===',
-      'apt-get install -y git',
-      'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
-      '',
-      '# Build Docker image from source',
-      'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
-      '',
-      '# Create deployment directory with custom compose file',
-      'mkdir -p /home/ubuntu/openclaw',
-      '',
-      '# Custom docker-compose.yml (standalone, no external env vars needed)',
-      `# PoC fix #10: Docker Compose override with AWS_REGION`,
-      `# PoC fix #5: Bedrock Inference Profile format model ID`,
-      'GATEWAY_TOKEN=$(openssl rand -hex 32)',
-      '',
-      '# PoC fix #7/#8/#9: Pre-create OpenClaw config (gateway.mode=local + allowedOrigins + token)',
-      'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
-      'cat > /home/ubuntu/openclaw/config/openclaw.json << OCCONFIG',
-      '{',
-      '  "gateway": {',
-      '    "mode": "local",',
-      '    "auth": { "token": "${GATEWAY_TOKEN}" },',
-      '    "controlUi": { "allowedOrigins": ["*"] }',
-      '  }',
-      '}',
-      'OCCONFIG',
-      '',
-      '# Create docker-compose.yml with bind mount to pre-configured directory',
-      'cat > /home/ubuntu/openclaw/docker-compose.yml << COMPOSE',
-      'services:',
-      '  openclaw-gateway:',
-      '    image: openclaw:local',
-      '    environment:',
-      '      HOME: /home/node',
-      '      TERM: xterm-256color',
-      `      AWS_REGION: ${bedrockRegion}`,
-      `      AWS_DEFAULT_REGION: ${bedrockRegion}`,
-      `      OPENCLAW_MODEL: ${bedrockModelId}`,
-      '    volumes:',
-      '      - /home/ubuntu/openclaw/config:/home/node/.openclaw',
-      '      - /home/ubuntu/openclaw/workspace:/home/node/.openclaw/workspace',
-      '    ports:',
-      '      - "18789:18789"',
-      '      - "18790:18790"',
-      '    init: true',
-      '    restart: unless-stopped',
-      '    command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"]',
-      'COMPOSE',
-      '',
-      'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
-      'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml',
-      '',
-      '# Save gateway token for reference',
-      'echo "${GATEWAY_TOKEN}" > /home/ubuntu/openclaw/.gateway-token',
-      'chown ubuntu:ubuntu /home/ubuntu/openclaw/.gateway-token',
-      'chmod 600 /home/ubuntu/openclaw/.gateway-token',
-      '',
-      '# === UFW Firewall ===',
-      '# Fix: Docker port mapping requires FORWARD ACCEPT policy (UFW default is DROP)',
-      'sed -i \'s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/\' /etc/default/ufw',
-      'ufw allow 22/tcp',
-      'ufw allow 18789/tcp',
-      'ufw allow 18790/tcp',
-      'ufw allow 18791/tcp',
-      'ufw --force enable',
-      '',
-      '# === Start OpenClaw ===',
-      'su - ubuntu -c "cd ~/openclaw && docker compose up -d"',
-      '',
-      '# === CloudWatch Agent ===',
-      'wget -q https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/amazon-cloudwatch-agent.deb',
-      'dpkg -i /tmp/amazon-cloudwatch-agent.deb',
-      'rm /tmp/amazon-cloudwatch-agent.deb',
-      ...(props.cloudWatchAgentConfig ? [
-        `cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWAGENT'`,
-        props.cloudWatchAgentConfig,
-        'CWAGENT',
-        '/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
-      ] : [
-        'echo "CloudWatch Agent config not provided, skipping"',
-      ]),
-      '',
-      'echo "ClawForce OpenClaw setup complete at $(date)"',
+      ...buildUserDataCommands({
+        bedrockRegion,
+        bedrockModelId,
+        cloudWatchAgentConfig: props.cloudWatchAgentConfig,
+      }),
     );
 
     this.instance = new ec2.Instance(this, 'Instance', {
@@ -193,5 +93,28 @@ export class ClawForceCompute extends Construct {
     // Set IMDS hop limit to 2 (CDK's requireImdsv2 sets hop=1, we need 2 for Docker)
     const cfnInstance = this.instance.node.defaultChild as ec2.CfnInstance;
     cfnInstance.addPropertyOverride('MetadataOptions.HttpPutResponseHopLimit', 2);
+
+    // CDK Nag suppressions (resource-level)
+    NagSuppressions.addResourceSuppressions(
+      this.instance,
+      [
+        {
+          id: 'AwsSolutions-EC26',
+          reason:
+            'EBS encryption is enabled via blockDevices configuration on the Instance construct',
+        },
+        {
+          id: 'AwsSolutions-EC28',
+          reason:
+            'Detailed monitoring is a cost optimization decision; CloudWatch alarms provide sufficient observability for current stage',
+        },
+        {
+          id: 'AwsSolutions-EC29',
+          reason:
+            'Termination protection is intentionally not enabled for dev environment to allow easy teardown',
+        },
+      ],
+      true,
+    );
   }
 }
