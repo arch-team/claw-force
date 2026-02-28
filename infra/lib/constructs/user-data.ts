@@ -146,8 +146,6 @@ function ufwFirewall(): string[] {
     'sed -i \'s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/\' /etc/default/ufw',
     'ufw allow 22/tcp',
     'ufw allow 18789/tcp',
-    'ufw allow 18790/tcp',
-    'ufw allow 18791/tcp',
     'ufw --force enable',
     '',
   ];

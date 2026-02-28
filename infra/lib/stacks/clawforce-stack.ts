@@ -81,23 +81,11 @@ export class ClawForceStack extends cdk.Stack {
         certificateArn: props.certificateArn,
       });
 
-      // Add ALB->EC2 ingress rules to the instance SG
+      // Add ALB->EC2 ingress rule for Gateway port (serves both Gateway + Control UI)
       networking.securityGroup.addIngressRule(
         ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
         ec2.Port.tcp(OPENCLAW_PORTS.GATEWAY),
-        'OpenClaw Gateway from ALB',
-      );
-
-      networking.securityGroup.addIngressRule(
-        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(OPENCLAW_PORTS.CONTROL_UI),
-        'OpenClaw Control UI from ALB',
-      );
-
-      networking.securityGroup.addIngressRule(
-        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(OPENCLAW_PORTS.BROWSER),
-        'OpenClaw Browser from ALB',
+        'OpenClaw Gateway + Control UI from ALB',
       );
 
       // WAF: WebACL + AWS Managed Rules -> ALB
@@ -105,25 +93,13 @@ export class ClawForceStack extends cdk.Stack {
         albArn: albConstruct.alb.loadBalancerArn,
       });
     } else {
-      // Direct mode: OpenClaw ports from allowed CIDR (backward compatible with CR-001)
+      // Direct mode: Gateway port from allowed CIDR (serves both Gateway + Control UI)
       const peer = ec2.Peer.ipv4(allowedCidr);
 
       networking.securityGroup.addIngressRule(
         peer,
         ec2.Port.tcp(OPENCLAW_PORTS.GATEWAY),
-        'OpenClaw Gateway WebSocket',
-      );
-
-      networking.securityGroup.addIngressRule(
-        peer,
-        ec2.Port.tcp(OPENCLAW_PORTS.CONTROL_UI),
-        'OpenClaw Control UI',
-      );
-
-      networking.securityGroup.addIngressRule(
-        peer,
-        ec2.Port.tcp(OPENCLAW_PORTS.BROWSER),
-        'OpenClaw Browser Control Server',
+        'OpenClaw Gateway + Control UI',
       );
     }
 
@@ -176,7 +152,7 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `http://${compute.instance.instancePublicIp}:18790`,
+        value: `http://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}`,
         description: 'OpenClaw Control UI URL',
       });
     }

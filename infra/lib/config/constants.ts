@@ -1,9 +1,16 @@
 import * as cdk from 'aws-cdk-lib/core';
 
-/** OpenClaw service port definitions */
+/**
+ * OpenClaw service port definitions.
+ *
+ * Note: OpenClaw consolidates Control UI into the Gateway port (18789).
+ * Browser service binds to 127.0.0.1:18791 (loopback only, not ALB-routable).
+ */
 export const OPENCLAW_PORTS = {
   GATEWAY: 18789,
-  CONTROL_UI: 18790,
+  /** Control UI is served on the Gateway port (OpenClaw consolidated since v1.x) */
+  CONTROL_UI: 18789,
+  /** Browser binds to 127.0.0.1 only — not routable from ALB */
   BROWSER: 18791,
 } as const;
 
