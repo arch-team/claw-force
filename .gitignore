@@ -27,3 +27,6 @@ scripts/poc-verify/results-*.txt
 
 # Temp files from deploy scripts
 /tmp/openclaw-poc-*
+
+# OpenClaw fork (managed independently)
+openclaw-fork/
