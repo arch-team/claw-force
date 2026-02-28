@@ -60,20 +60,7 @@ export class ClawForceAlb extends Construct {
       loadBalancerName: 'ClawForce-ALB',
     });
 
-    // Target Groups for each OpenClaw service
-    const controlUiTarget = new elbv2.ApplicationTargetGroup(this, 'ControlUiTG', {
-      vpc: props.vpc,
-      port: OPENCLAW_PORTS.CONTROL_UI,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new targets.InstanceTarget(props.instance, OPENCLAW_PORTS.CONTROL_UI)],
-      healthCheck: {
-        path: '/',
-        port: String(OPENCLAW_PORTS.CONTROL_UI),
-        healthyHttpCodes: '200-399',
-      },
-      targetGroupName: 'ClawForce-ControlUI',
-    });
-
+    // Single Target Group — OpenClaw serves Gateway + Control UI on the same port
     const gatewayTarget = new elbv2.ApplicationTargetGroup(this, 'GatewayTG', {
       vpc: props.vpc,
       port: OPENCLAW_PORTS.GATEWAY,
@@ -96,18 +83,11 @@ export class ClawForceAlb extends Construct {
         props.certificateArn,
       );
 
-      const httpsListener = this.alb.addListener('HttpsListener', {
+      this.alb.addListener('HttpsListener', {
         port: 443,
         protocol: elbv2.ApplicationProtocol.HTTPS,
         certificates: [certificate],
-        defaultTargetGroups: [controlUiTarget],
-      });
-
-      // Path-based routing for WebSocket
-      httpsListener.addTargetGroups('GatewayRule', {
-        priority: 10,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/ws', '/ws/*'])],
-        targetGroups: [gatewayTarget],
+        defaultTargetGroups: [gatewayTarget],
       });
 
       // HTTP -> HTTPS redirect
@@ -121,17 +101,11 @@ export class ClawForceAlb extends Construct {
         }),
       });
     } else {
-      // HTTP-only mode: direct routing on port 80
-      const httpListener = this.alb.addListener('HttpListener', {
+      // HTTP-only mode: all traffic to Gateway (serves Control UI + WebSocket)
+      this.alb.addListener('HttpListener', {
         port: 80,
         protocol: elbv2.ApplicationProtocol.HTTP,
-        defaultTargetGroups: [controlUiTarget],
-      });
-
-      httpListener.addTargetGroups('GatewayRule', {
-        priority: 10,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/ws', '/ws/*'])],
-        targetGroups: [gatewayTarget],
+        defaultTargetGroups: [gatewayTarget],
       });
     }
 
