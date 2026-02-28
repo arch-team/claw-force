@@ -79,29 +79,33 @@ export class ClawForceMonitoring extends Construct {
 
   /** Generate CloudWatch Agent config JSON for User Data injection */
   public getAgentConfig(): string {
-    return JSON.stringify({
-      agent: { metrics_collection_interval: 60, run_as_user: 'root' },
-      logs: {
-        logs_collected: {
-          files: {
-            collect_list: [
-              {
-                file_path: '/var/log/clawforce-setup.log',
-                log_group_name: this.setupLogGroup.logGroupName,
-                log_stream_name: '{instance_id}/setup',
-              },
-            ],
+    return JSON.stringify(
+      {
+        agent: { metrics_collection_interval: 60, run_as_user: 'root' },
+        logs: {
+          logs_collected: {
+            files: {
+              collect_list: [
+                {
+                  file_path: '/var/log/clawforce-setup.log',
+                  log_group_name: this.setupLogGroup.logGroupName,
+                  log_stream_name: '{instance_id}/setup',
+                },
+              ],
+            },
+          },
+        },
+        metrics: {
+          namespace: 'ClawForce',
+          metrics_collected: {
+            disk: { measurement: ['used_percent'], resources: ['/'] },
+            mem: { measurement: ['mem_used_percent'] },
           },
         },
       },
-      metrics: {
-        namespace: 'ClawForce',
-        metrics_collected: {
-          disk: { measurement: ['used_percent'], resources: ['/'] },
-          mem: { measurement: ['mem_used_percent'] },
-        },
-      },
-    }, null, 2);
+      null,
+      2,
+    );
   }
 
   private mapRetention(days: number): logs.RetentionDays {

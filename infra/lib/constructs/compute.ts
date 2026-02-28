@@ -1,7 +1,6 @@
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as cdk from 'aws-cdk-lib/core';
 
 export interface ClawForceComputeProps {
   /** VPC to launch the instance in */
@@ -153,14 +152,14 @@ export class ClawForceCompute extends Construct {
       'wget -q https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb -O /tmp/amazon-cloudwatch-agent.deb',
       'dpkg -i /tmp/amazon-cloudwatch-agent.deb',
       'rm /tmp/amazon-cloudwatch-agent.deb',
-      ...(props.cloudWatchAgentConfig ? [
-        `cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWAGENT'`,
-        props.cloudWatchAgentConfig,
-        'CWAGENT',
-        '/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
-      ] : [
-        'echo "CloudWatch Agent config not provided, skipping"',
-      ]),
+      ...(props.cloudWatchAgentConfig
+        ? [
+            `cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWAGENT'`,
+            props.cloudWatchAgentConfig,
+            'CWAGENT',
+            '/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json',
+          ]
+        : ['echo "CloudWatch Agent config not provided, skipping"']),
       '',
       'echo "ClawForce OpenClaw setup complete at $(date)"',
     );

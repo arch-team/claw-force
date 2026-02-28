@@ -34,10 +34,7 @@ export class ClawForceIam extends Construct {
     this.role.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: [
-          'bedrock:InvokeModel',
-          'bedrock:InvokeModelWithResponseStream',
-        ],
+        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
         resources: [
           `arn:aws:bedrock:${region}::foundation-model/*`,
           `arn:aws:bedrock:${region}:${cdk.Aws.ACCOUNT_ID}:inference-profile/*`,
