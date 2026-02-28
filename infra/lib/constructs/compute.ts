@@ -1,7 +1,9 @@
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { NagSuppressions } from 'cdk-nag';
 import { buildUserDataCommands } from './user-data';
+import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceComputeProps {
   /** VPC to launch the instance in */
@@ -42,10 +44,10 @@ export class ClawForceCompute extends Construct {
   constructor(scope: Construct, id: string, props: ClawForceComputeProps) {
     super(scope, id);
 
-    const instanceType = new ec2.InstanceType(props.instanceType ?? 't3.medium');
-    const volumeSize = props.volumeSize ?? 30;
-    const bedrockRegion = props.bedrockRegion ?? 'us-east-1';
-    const bedrockModelId = props.bedrockModelId ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+    const instanceType = new ec2.InstanceType(props.instanceType ?? DEFAULTS.INSTANCE_TYPE);
+    const volumeSize = props.volumeSize ?? DEFAULTS.VOLUME_SIZE;
+    const bedrockRegion = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
+    const bedrockModelId = props.bedrockModelId ?? DEFAULTS.BEDROCK_MODEL_ID;
 
     // Ubuntu 24.04 LTS AMI lookup
     const machineImage = ec2.MachineImage.lookup({
@@ -91,5 +93,28 @@ export class ClawForceCompute extends Construct {
     // Set IMDS hop limit to 2 (CDK's requireImdsv2 sets hop=1, we need 2 for Docker)
     const cfnInstance = this.instance.node.defaultChild as ec2.CfnInstance;
     cfnInstance.addPropertyOverride('MetadataOptions.HttpPutResponseHopLimit', 2);
+
+    // CDK Nag suppressions (resource-level)
+    NagSuppressions.addResourceSuppressions(
+      this.instance,
+      [
+        {
+          id: 'AwsSolutions-EC26',
+          reason:
+            'EBS encryption is enabled via blockDevices configuration on the Instance construct',
+        },
+        {
+          id: 'AwsSolutions-EC28',
+          reason:
+            'Detailed monitoring is a cost optimization decision; CloudWatch alarms provide sufficient observability for current stage',
+        },
+        {
+          id: 'AwsSolutions-EC29',
+          reason:
+            'Termination protection is intentionally not enabled for dev environment to allow easy teardown',
+        },
+      ],
+      true,
+    );
   }
 }
