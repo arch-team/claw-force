@@ -61,7 +61,7 @@ else
   aws iam create-role \
     --role-name "${IAM_ROLE_NAME}" \
     --assume-role-policy-document "${TRUST_POLICY}" \
-    --description "OpenClaw PoC — EC2 Bedrock access (least privilege)" \
+    --description "OpenClaw PoC - EC2 Bedrock access (least privilege)" \
     --tags Key=Project,Value=openclaw-poc Key=ManagedBy,Value=script \
     --profile "${AWS_PROFILE}" \
     --output text --query 'Role.Arn'

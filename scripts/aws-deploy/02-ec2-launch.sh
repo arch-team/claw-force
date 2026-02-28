@@ -87,7 +87,7 @@ if [[ "${SG_ID}" != "None" && -n "${SG_ID}" ]]; then
 else
   SG_ID=$(aws ec2 create-security-group \
     --group-name "${SECURITY_GROUP_NAME}" \
-    --description "OpenClaw PoC — restricted access from deployer IP" \
+    --description "OpenClaw PoC - restricted access from deployer IP" \
     --vpc-id "${DEFAULT_VPC_ID}" \
     --tag-specifications "ResourceType=security-group,Tags=[{Key=Project,Value=openclaw-poc},{Key=ManagedBy,Value=script}]" \
     --query "GroupId" --output text \
