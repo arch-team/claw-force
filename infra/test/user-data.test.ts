@@ -53,13 +53,13 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('OPENCLAW_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0');
   });
 
-  test('includes UFW firewall rules for all ports', () => {
+  test('includes UFW firewall rules for SSH and Gateway', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
     expect(joined).toContain('ufw allow 22/tcp');
     expect(joined).toContain('ufw allow 18789/tcp');
-    expect(joined).toContain('ufw allow 18790/tcp');
-    expect(joined).toContain('ufw allow 18791/tcp');
+    expect(joined).not.toContain('ufw allow 18790/tcp');
+    expect(joined).not.toContain('ufw allow 18791/tcp');
   });
 
   test('includes CloudWatch Agent install', () => {

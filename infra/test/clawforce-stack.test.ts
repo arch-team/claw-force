@@ -18,6 +18,7 @@ describe('ClawForceStack - ALB mode (default)', () => {
   });
 
   test('creates two security groups (instance + ALB)', () => {
+    // Networking SG (SSH + Gateway from ALB) + ALB SG (80/443 from internet)
     template.resourceCountIs('AWS::EC2::SecurityGroup', 2);
   });
 
@@ -29,19 +30,15 @@ describe('ClawForceStack - ALB mode (default)', () => {
     });
   });
 
-  test('creates three target groups for OpenClaw services', () => {
-    template.resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 3);
+  test('creates two target groups for OpenClaw services', () => {
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 2);
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
       Port: 18789,
       Name: 'ClawForce-Gateway',
     });
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
-      Port: 18790,
+      Port: 18789,
       Name: 'ClawForce-ControlUI',
-    });
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
-      Port: 18791,
-      Name: 'ClawForce-Browser',
     });
   });
 
