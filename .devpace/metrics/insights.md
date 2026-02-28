@@ -184,6 +184,21 @@
 
 ---
 
+### Ubuntu UFW 默认 FORWARD 策略阻止 Docker 端口映射
+
+- **类型**：防御
+- **来源**：生产部署验证（Docker 端口外部不可达）
+- **标签**：Ubuntu、Docker、UFW、iptables、网络
+- **描述**：Ubuntu 24.04 的 UFW 默认 `DEFAULT_FORWARD_POLICY="DROP"`，会阻止 Docker 的端口映射流量。Docker 端口映射依赖 iptables FORWARD 链（通过 PREROUTING DNAT + FORWARD 转发），但 UFW 的 FORWARD DROP 策略会拦截新的入站连接。修复方法：在 `/etc/default/ufw` 中将 `DEFAULT_FORWARD_POLICY` 改为 `"ACCEPT"`，然后 `ufw reload` + `systemctl restart docker`。此修复应在 User Data 脚本中固化。
+- **置信度**：0.8
+- **最近引用**：生产部署（2026-02-28，手动修复后端口可达）
+- **验证次数**：1
+- **状态**：Active
+- **冲突对**：无
+- **日期**：2026-02-28
+
+---
+
 ## Dormant
 
 <!-- 休眠经验：置信度 < 0.4 或超 180 天未引用 -->

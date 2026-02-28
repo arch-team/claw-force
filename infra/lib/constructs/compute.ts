@@ -138,6 +138,8 @@ export class ClawForceCompute extends Construct {
       'chmod 600 /home/ubuntu/openclaw/.gateway-token',
       '',
       '# === UFW Firewall ===',
+      '# Fix: Docker port mapping requires FORWARD ACCEPT policy (UFW default is DROP)',
+      'sed -i \'s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/\' /etc/default/ufw',
       'ufw allow 22/tcp',
       'ufw allow 18789/tcp',
       'ufw allow 18790/tcp',
