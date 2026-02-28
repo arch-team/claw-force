@@ -8,10 +8,8 @@
 
 **迭代目标**：完成 OpenClaw→ClawForce 核心企业化适配，从 PoC 手动验证升级为可重复的自动化部署
 
-**当前工作**：REL-001 v0.1.0 已创建（deployed，验证通过）
+**当前工作**：REL-001 v0.1.0 发布完成
 
-**发布状态**：REL-001 v0.1.0 — deployed（5 CR，已验证后销毁验证环境）
-
-**下一步**：`/pace-release close` 关闭 Release → `/pace-plan next` 规划 Iter-2
+**下一步**：`/pace-plan next` 规划 Iter-2
 
 <!-- devpace-version: 1.5.0 -->
