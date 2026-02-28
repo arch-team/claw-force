@@ -1,8 +1,15 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 /**
  * UserData script builder for ClawForce EC2 instance.
  *
  * Generates the shell commands for instance bootstrap, separated into
  * logical sections for readability and testability.
+ *
+ * Docker deployment files are read from infra/assets/ at CDK synth time:
+ * - assets/docker-compose.yml  (uses ${VAR} with .env file)
+ * - assets/openclaw.json       (uses ${GATEWAY_TOKEN} via envsubst)
  *
  * PoC lessons applied:
  * - Ubuntu 24.04 uses ssh.service not sshd.service (#2)
@@ -10,6 +17,9 @@
  * - Bedrock uses Inference Profile format model ID (#5)
  * - Pre-create OpenClaw config for gateway.mode=local (#7/#8/#9)
  */
+
+/** Path to the assets directory (resolved relative to this file) */
+const ASSETS_DIR = path.resolve(__dirname, '../../assets');
 
 export interface UserDataParams {
   /** AWS region for Bedrock */
@@ -74,58 +84,51 @@ function dockerInstall(): string[] {
   ];
 }
 
+/** Read an asset file at CDK synth time */
+function readAsset(filename: string): string {
+  return fs.readFileSync(path.join(ASSETS_DIR, filename), 'utf-8');
+}
+
 function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[] {
+  const composeContent = readAsset('docker-compose.yml');
+  const configContent = readAsset('openclaw.json');
+
   return [
     '# === OpenClaw Deployment (build from source) ===',
-    'apt-get install -y git',
+    'apt-get install -y git gettext-base',
     'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
     '',
     '# Build Docker image from source',
     'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
     '',
-    '# Create deployment directory with custom compose file',
-    'mkdir -p /home/ubuntu/openclaw',
-    '',
-    `# PoC fix #10: Docker Compose override with AWS_REGION`,
-    `# PoC fix #5: Bedrock Inference Profile format model ID`,
-    'GATEWAY_TOKEN=$(openssl rand -hex 32)',
-    '',
-    '# PoC fix #7/#8/#9: Pre-create OpenClaw config (gateway.mode=local + allowedOrigins + token)',
+    '# Create deployment directory',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
-    'cat > /home/ubuntu/openclaw/config/openclaw.json << OCCONFIG',
-    '{',
-    '  "gateway": {',
-    '    "mode": "local",',
-    '    "auth": { "token": "${GATEWAY_TOKEN}" },',
-    '    "controlUi": { "allowedOrigins": ["*"] }',
-    '  }',
-    '}',
-    'OCCONFIG',
     '',
-    '# Create docker-compose.yml with bind mount to pre-configured directory',
-    'cat > /home/ubuntu/openclaw/docker-compose.yml << COMPOSE',
-    'services:',
-    '  openclaw-gateway:',
-    '    image: openclaw:local',
-    '    environment:',
-    '      HOME: /home/node',
-    '      TERM: xterm-256color',
-    `      AWS_REGION: ${bedrockRegion}`,
-    `      AWS_DEFAULT_REGION: ${bedrockRegion}`,
-    `      OPENCLAW_MODEL: ${bedrockModelId}`,
-    '    volumes:',
-    '      - /home/ubuntu/openclaw/config:/home/node/.openclaw',
-    '      - /home/ubuntu/openclaw/workspace:/home/node/.openclaw/workspace',
-    '    ports:',
-    '      - "18789:18789"',
-    '      - "18790:18790"',
-    '    init: true',
-    '    restart: unless-stopped',
-    '    command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"]',
+    '# Generate gateway token',
+    'export GATEWAY_TOKEN=$(openssl rand -hex 32)',
+    '',
+    '# Write OpenClaw config (envsubst replaces $GATEWAY_TOKEN)',
+    `cat > /tmp/openclaw.json.tpl << 'OCCONFIG'`,
+    configContent.trim(),
+    'OCCONFIG',
+    'envsubst < /tmp/openclaw.json.tpl > /home/ubuntu/openclaw/config/openclaw.json',
+    'rm /tmp/openclaw.json.tpl',
+    '',
+    '# Write docker-compose.yml',
+    `cat > /home/ubuntu/openclaw/docker-compose.yml << 'COMPOSE'`,
+    composeContent.trim(),
     'COMPOSE',
     '',
+    `# Write .env with deployment-specific values (PoC fix #10/#5)`,
+    `cat > /home/ubuntu/openclaw/.env << ENV`,
+    `AWS_REGION=${bedrockRegion}`,
+    `AWS_DEFAULT_REGION=${bedrockRegion}`,
+    `OPENCLAW_MODEL=${bedrockModelId}`,
+    'ENV',
+    '',
+    '# Set ownership',
     'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
-    'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml',
+    'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     '',
     '# Save gateway token for reference',
     'echo "${GATEWAY_TOKEN}" > /home/ubuntu/openclaw/.gateway-token',
