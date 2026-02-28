@@ -200,7 +200,7 @@ usermod -aG docker ubuntu
 # 安全加固: 禁用 SSH 密码登录
 sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-systemctl restart sshd
+systemctl restart ssh
 
 # 启用 UFW 基础防火墙（与 Security Group 双层防护）
 ufw default deny incoming
@@ -239,7 +239,7 @@ else
     --security-group-ids "${SG_ID}" \
     --iam-instance-profile "Name=${INSTANCE_PROFILE_NAME}" \
     --block-device-mappings "[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":${EC2_VOLUME_SIZE},\"VolumeType\":\"gp3\",\"Encrypted\":true}}]" \
-    --metadata-options "HttpTokens=required,HttpPutResponseHopLimit=1,HttpEndpoint=enabled" \
+    --metadata-options "HttpTokens=required,HttpPutResponseHopLimit=2,HttpEndpoint=enabled" \
     --user-data "${USER_DATA}" \
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${INSTANCE_NAME}},{Key=Project,Value=openclaw-poc},{Key=ManagedBy,Value=script}]" \
     --query "Instances[0].InstanceId" --output text \

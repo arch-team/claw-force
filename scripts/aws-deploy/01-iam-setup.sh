@@ -84,14 +84,19 @@ BEDROCK_POLICY=$(cat <<EOF
         "bedrock:InvokeModel",
         "bedrock:InvokeModelWithResponseStream"
       ],
-      "Resource": "arn:aws:bedrock:${BEDROCK_REGION}::foundation-model/*"
+      "Resource": [
+        "arn:aws:bedrock:${BEDROCK_REGION}::foundation-model/*",
+        "arn:aws:bedrock:*:*:inference-profile/*"
+      ]
     },
     {
       "Sid": "BedrockListModels",
       "Effect": "Allow",
       "Action": [
         "bedrock:ListFoundationModels",
-        "bedrock:GetFoundationModel"
+        "bedrock:GetFoundationModel",
+        "bedrock:ListInferenceProfiles",
+        "bedrock:GetInferenceProfile"
       ],
       "Resource": "*"
     }
