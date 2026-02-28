@@ -1,7 +1,6 @@
 import { Aspects } from 'aws-cdk-lib/core';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
-import { Template } from 'aws-cdk-lib/assertions';
-import { ClawForceStack } from '../lib/clawforce-stack';
+import { ClawForceStack } from '../lib/stacks/clawforce-stack';
 import { createTestApp, TEST_ACCOUNT, TEST_REGION } from './test-helpers';
 
 describe('CDK Nag Compliance - ClawForceStack (ALB mode)', () => {
@@ -24,27 +23,33 @@ describe('CDK Nag Compliance - ClawForceStack (ALB mode)', () => {
       },
       {
         id: 'AwsSolutions-EC26',
-        reason: 'EBS encryption is enabled via blockDevices configuration on the Instance construct',
+        reason:
+          'EBS encryption is enabled via blockDevices configuration on the Instance construct',
       },
       {
         id: 'AwsSolutions-EC28',
-        reason: 'Detailed monitoring is a cost optimization decision; CloudWatch alarms provide sufficient observability for current stage',
+        reason:
+          'Detailed monitoring is a cost optimization decision; CloudWatch alarms provide sufficient observability for current stage',
       },
       {
         id: 'AwsSolutions-EC29',
-        reason: 'Termination protection is intentionally not enabled for dev environment to allow easy teardown',
+        reason:
+          'Termination protection is intentionally not enabled for dev environment to allow easy teardown',
       },
       {
         id: 'AwsSolutions-ELB2',
-        reason: 'ALB access logs require an S3 bucket; deferred to cost-optimization phase to avoid unnecessary S3 costs',
+        reason:
+          'ALB access logs require an S3 bucket; deferred to cost-optimization phase to avoid unnecessary S3 costs',
       },
       {
         id: 'AwsSolutions-EC23',
-        reason: 'ALB security group intentionally allows 0.0.0.0/0 on ports 80/443 as it is an internet-facing load balancer',
+        reason:
+          'ALB security group intentionally allows 0.0.0.0/0 on ports 80/443 as it is an internet-facing load balancer',
       },
       {
         id: 'AwsSolutions-VPC3',
-        reason: 'Using default VPC for PoC/dev stage; custom VPC with flow logs planned for production',
+        reason:
+          'Using default VPC for PoC/dev stage; custom VPC with flow logs planned for production',
       },
     ]);
 

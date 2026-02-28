@@ -1,12 +1,12 @@
 import * as cdk from 'aws-cdk-lib/core';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
-import { ClawForceNetworking } from './constructs/networking';
-import { ClawForceIam } from './constructs/iam';
-import { ClawForceCompute } from './constructs/compute';
-import { ClawForceAlb } from './constructs/alb';
-import { ClawForceWaf } from './constructs/waf';
-import { ClawForceMonitoring } from './constructs/monitoring';
+import { ClawForceNetworking } from '../constructs/networking';
+import { ClawForceIam } from '../constructs/iam';
+import { ClawForceCompute } from '../constructs/compute';
+import { ClawForceAlb } from '../constructs/alb';
+import { ClawForceWaf } from '../constructs/waf';
+import { ClawForceMonitoring } from '../constructs/monitoring';
 
 export interface ClawForceStackProps extends cdk.StackProps {
   /** CIDR range allowed for SSH and management access */

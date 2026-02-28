@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
-import { ClawForceStack } from '../lib/clawforce-stack';
+import { ClawForceStack } from '../lib/stacks/clawforce-stack';
 
 const app = new cdk.App();
 

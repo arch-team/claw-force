@@ -8,7 +8,8 @@ describe('ClawForceWaf', () => {
   beforeAll(() => {
     const stack = new cdk.Stack();
     new ClawForceWaf(stack, 'Waf', {
-      albArn: 'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-alb/1234567890',
+      albArn:
+        'arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/app/test-alb/1234567890',
     });
     template = Template.fromStack(stack);
   });
