@@ -1,6 +1,7 @@
 {
   "gateway": {
     "mode": "local",
+    "auth": { "token": "clawforce-gateway-2026" },
     "controlUi": { "allowedOrigins": ["*"] }
   }
 }

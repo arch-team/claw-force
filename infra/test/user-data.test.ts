@@ -4,6 +4,7 @@ describe('buildUserDataCommands', () => {
   const defaultParams = {
     bedrockRegion: 'us-east-1',
     bedrockModelId: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+    gatewayToken: 'test-token-123',
   };
 
   test('starts with bash shebang and error handling', () => {
@@ -92,11 +93,10 @@ describe('buildUserDataCommands', () => {
     expect(last).toContain('ClawForce OpenClaw setup complete');
   });
 
-  test('disables gateway token auth (security via ALB + WAF + SG)', () => {
+  test('injects gateway token into .env via OPENCLAW_GATEWAY_TOKEN', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).not.toContain('GATEWAY_TOKEN');
-    expect(joined).not.toContain('gateway-token');
+    expect(joined).toContain('OPENCLAW_GATEWAY_TOKEN=test-token-123');
   });
 
   test('creates OpenClaw config with gateway mode local', () => {

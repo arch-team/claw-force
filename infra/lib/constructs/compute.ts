@@ -57,10 +57,12 @@ export class ClawForceCompute extends Construct {
 
     // User Data script with all PoC fixes (see user-data.ts for details)
     const userData = ec2.UserData.forLinux();
+    const gatewayToken = props.gatewayToken ?? DEFAULTS.GATEWAY_TOKEN;
     userData.addCommands(
       ...buildUserDataCommands({
         bedrockRegion,
         bedrockModelId,
+        gatewayToken,
         cloudWatchAgentConfig: props.cloudWatchAgentConfig,
       }),
     );

@@ -26,6 +26,8 @@ export interface UserDataParams {
   bedrockRegion: string;
   /** Bedrock model ID in Inference Profile format */
   bedrockModelId: string;
+  /** Gateway auth token (required by OpenClaw for --bind lan) */
+  gatewayToken: string;
   /** CloudWatch Agent config JSON (optional) */
   cloudWatchAgentConfig?: string;
 }
@@ -36,7 +38,7 @@ export function buildUserDataCommands(params: UserDataParams): string[] {
     ...preamble(),
     ...systemSetup(),
     ...dockerInstall(),
-    ...openClawDeploy(params.bedrockRegion, params.bedrockModelId),
+    ...openClawDeploy(params.bedrockRegion, params.bedrockModelId, params.gatewayToken),
     ...ufwFirewall(),
     ...startOpenClaw(),
     ...cloudWatchAgent(params.cloudWatchAgentConfig),
@@ -89,7 +91,7 @@ function readAsset(filename: string): string {
   return fs.readFileSync(path.join(ASSETS_DIR, filename), 'utf-8');
 }
 
-function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[] {
+function openClawDeploy(bedrockRegion: string, bedrockModelId: string, gatewayToken: string): string[] {
   const composeContent = readAsset('docker-compose.yml');
   const configContent = readAsset('openclaw.json');
 
@@ -104,7 +106,7 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     '# Create deployment directory',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
     '',
-    '# Write OpenClaw config (auth disabled — security via ALB + WAF + SG)',
+    '# Write OpenClaw config (auth via OPENCLAW_GATEWAY_TOKEN env var in .env)',
     `cat > /home/ubuntu/openclaw/config/openclaw.json << 'OCCONFIG'`,
     configContent.trim(),
     'OCCONFIG',
@@ -119,6 +121,7 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     `AWS_REGION=${bedrockRegion}`,
     `AWS_DEFAULT_REGION=${bedrockRegion}`,
     `OPENCLAW_MODEL=${bedrockModelId}`,
+    `OPENCLAW_GATEWAY_TOKEN=${gatewayToken}`,
     'ENV',
     '',
     '# Set ownership and restrict .env permissions',
