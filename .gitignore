@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tgz
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# PoC verification results (generated)
+scripts/poc-verify/results-*.txt
+
+# Temp files from deploy scripts
+/tmp/openclaw-poc-*
