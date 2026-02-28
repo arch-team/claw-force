@@ -1,9 +1,10 @@
 # ClawForce OpenClaw Gateway - Docker Compose
 #
 # Environment variables (injected via .env file at deploy time):
-#   AWS_REGION          - AWS region for Bedrock API
-#   AWS_DEFAULT_REGION  - Fallback region
-#   OPENCLAW_MODEL      - Bedrock model ID (Inference Profile format)
+#   AWS_REGION              - AWS region for Bedrock API
+#   AWS_DEFAULT_REGION      - Fallback region
+#   OPENCLAW_MODEL          - Bedrock model ID (Inference Profile format)
+#   OPENCLAW_GATEWAY_TOKEN  - Gateway auth token (required for --bind lan)
 
 services:
   openclaw-gateway:
@@ -14,6 +15,7 @@ services:
       AWS_REGION: ${AWS_REGION}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       OPENCLAW_MODEL: ${OPENCLAW_MODEL}
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
     volumes:
       - ./config:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace

@@ -22,6 +22,12 @@ export const DEFAULTS = {
   BEDROCK_MODEL_ID: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
   LOG_RETENTION_DAYS: 30,
   ALLOWED_CIDR: '0.0.0.0/0',
+  /**
+   * Gateway auth token — required by OpenClaw when binding to LAN.
+   * Security is enforced at infra layer (ALB + WAF + SG); this token
+   * prevents accidental unauthenticated access if SG rules are relaxed.
+   */
+  GATEWAY_TOKEN: 'clawforce-gateway-2026',
 } as const;
 
 /** Required resource tags for cost tracking */

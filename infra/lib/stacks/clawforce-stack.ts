@@ -10,6 +10,9 @@ import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
 
+/** Token fragment appended to dashboard URLs for auto-authentication */
+const TOKEN_HASH = `#token=${DEFAULTS.GATEWAY_TOKEN}`;
+
 export interface ClawForceStackProps extends cdk.StackProps {
   /** CIDR range allowed for SSH and management access */
   allowedCidr?: string;
@@ -162,8 +165,8 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}`,
-        description: 'OpenClaw Control UI URL (via ALB)',
+        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}/${TOKEN_HASH}`,
+        description: 'OpenClaw Control UI URL (via ALB, auto-authenticated)',
       });
 
       new cdk.CfnOutput(this, 'GatewayUrl', {
@@ -177,8 +180,8 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `http://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}`,
-        description: 'OpenClaw Control UI URL',
+        value: `http://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}/${TOKEN_HASH}`,
+        description: 'OpenClaw Control UI URL (auto-authenticated)',
       });
     }
   }
