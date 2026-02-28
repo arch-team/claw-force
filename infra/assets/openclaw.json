@@ -1,7 +1,6 @@
 {
   "gateway": {
     "mode": "local",
-    "auth": { "token": "${GATEWAY_TOKEN}" },
     "controlUi": { "allowedOrigins": ["*"] }
   }
 }
