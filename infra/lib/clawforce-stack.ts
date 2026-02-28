@@ -112,11 +112,7 @@ export class ClawForceStack extends cdk.Stack {
         'OpenClaw Gateway WebSocket',
       );
 
-      networking.securityGroup.addIngressRule(
-        peer,
-        ec2.Port.tcp(18790),
-        'OpenClaw Control UI',
-      );
+      networking.securityGroup.addIngressRule(peer, ec2.Port.tcp(18790), 'OpenClaw Control UI');
 
       networking.securityGroup.addIngressRule(
         peer,

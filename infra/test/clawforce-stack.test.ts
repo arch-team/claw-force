@@ -23,29 +23,26 @@ describe('ClawForceStack - ALB mode (default)', () => {
 
   test('creates internet-facing ALB', () => {
     template.resourceCountIs('AWS::ElasticLoadBalancingV2::LoadBalancer', 1);
-    template.hasResourceProperties(
-      'AWS::ElasticLoadBalancingV2::LoadBalancer',
-      {
-        Scheme: 'internet-facing',
-        Name: 'ClawForce-ALB',
-      },
-    );
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::LoadBalancer', {
+      Scheme: 'internet-facing',
+      Name: 'ClawForce-ALB',
+    });
   });
 
   test('creates three target groups for OpenClaw services', () => {
     template.resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 3);
-    template.hasResourceProperties(
-      'AWS::ElasticLoadBalancingV2::TargetGroup',
-      { Port: 18789, Name: 'ClawForce-Gateway' },
-    );
-    template.hasResourceProperties(
-      'AWS::ElasticLoadBalancingV2::TargetGroup',
-      { Port: 18790, Name: 'ClawForce-ControlUI' },
-    );
-    template.hasResourceProperties(
-      'AWS::ElasticLoadBalancingV2::TargetGroup',
-      { Port: 18791, Name: 'ClawForce-Browser' },
-    );
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
+      Port: 18789,
+      Name: 'ClawForce-Gateway',
+    });
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
+      Port: 18790,
+      Name: 'ClawForce-ControlUI',
+    });
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
+      Port: 18791,
+      Name: 'ClawForce-Browser',
+    });
   });
 
   test('creates WAF WebACL with REGIONAL scope', () => {
@@ -128,10 +125,7 @@ describe('ClawForceStack - direct mode (enableAlb=false)', () => {
   });
 
   test('does not create ALB', () => {
-    template.resourceCountIs(
-      'AWS::ElasticLoadBalancingV2::LoadBalancer',
-      0,
-    );
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::LoadBalancer', 0);
   });
 
   test('does not create WAF', () => {

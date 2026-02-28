@@ -28,10 +28,7 @@ describe('ClawForceIam', () => {
       PolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: [
-              'bedrock:InvokeModel',
-              'bedrock:InvokeModelWithResponseStream',
-            ],
+            Action: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
             Effect: 'Allow',
           }),
         ]),
@@ -44,13 +41,8 @@ describe('ClawForceIam', () => {
       PolicyDocument: Match.objectLike({
         Statement: Match.arrayWith([
           Match.objectLike({
-            Action: [
-              'bedrock:InvokeModel',
-              'bedrock:InvokeModelWithResponseStream',
-            ],
-            Resource: Match.arrayWith([
-              'arn:aws:bedrock:us-east-1::foundation-model/*',
-            ]),
+            Action: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+            Resource: Match.arrayWith(['arn:aws:bedrock:us-east-1::foundation-model/*']),
           }),
         ]),
       }),
@@ -78,9 +70,7 @@ describe('ClawForceIam', () => {
   test('attaches CloudWatch Agent managed policy', () => {
     const roles = template.findResources('AWS::IAM::Role');
     const role = Object.values(roles)[0];
-    const managedPolicies = JSON.stringify(
-      role.Properties.ManagedPolicyArns,
-    );
+    const managedPolicies = JSON.stringify(role.Properties.ManagedPolicyArns);
     expect(managedPolicies).toContain('CloudWatchAgentServerPolicy');
   });
 
