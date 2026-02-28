@@ -92,10 +92,11 @@ describe('buildUserDataCommands', () => {
     expect(last).toContain('ClawForce OpenClaw setup complete');
   });
 
-  test('generates gateway token with openssl', () => {
+  test('disables gateway token auth (security via ALB + WAF + SG)', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).toContain('GATEWAY_TOKEN=$(openssl rand -hex 32)');
+    expect(joined).not.toContain('GATEWAY_TOKEN');
+    expect(joined).not.toContain('gateway-token');
   });
 
   test('creates OpenClaw config with gateway mode local', () => {
@@ -111,11 +112,12 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('${AWS_REGION}');
   });
 
-  test('reads openclaw.json from assets directory', () => {
+  test('writes openclaw.json config directly (no envsubst needed)', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).toContain('${GATEWAY_TOKEN}');
-    expect(joined).toContain('envsubst');
+    expect(joined).toContain('openclaw.json');
+    expect(joined).toContain('"mode": "local"');
+    expect(joined).not.toContain('envsubst');
   });
 
   test('writes .env file with deployment values', () => {

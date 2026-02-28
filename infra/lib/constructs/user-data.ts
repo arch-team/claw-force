@@ -9,7 +9,7 @@ import * as path from 'path';
  *
  * Docker deployment files are read from infra/assets/ at CDK synth time:
  * - assets/docker-compose.yml  (uses ${VAR} with .env file)
- * - assets/openclaw.json       (uses ${GATEWAY_TOKEN} via envsubst)
+ * - assets/openclaw.json       (static config, no envsubst needed)
  *
  * PoC lessons applied:
  * - Ubuntu 24.04 uses ssh.service not sshd.service (#2)
@@ -104,15 +104,10 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     '# Create deployment directory',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
     '',
-    '# Generate gateway token',
-    'export GATEWAY_TOKEN=$(openssl rand -hex 32)',
-    '',
-    '# Write OpenClaw config (envsubst replaces $GATEWAY_TOKEN)',
-    `cat > /tmp/openclaw.json.tpl << 'OCCONFIG'`,
+    '# Write OpenClaw config (auth disabled — security via ALB + WAF + SG)',
+    `cat > /home/ubuntu/openclaw/config/openclaw.json << 'OCCONFIG'`,
     configContent.trim(),
     'OCCONFIG',
-    'envsubst < /tmp/openclaw.json.tpl > /home/ubuntu/openclaw/config/openclaw.json',
-    'rm /tmp/openclaw.json.tpl',
     '',
     '# Write docker-compose.yml',
     `cat > /home/ubuntu/openclaw/docker-compose.yml << 'COMPOSE'`,
@@ -131,10 +126,6 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     'chmod 600 /home/ubuntu/openclaw/.env',
     '',
-    '# Save gateway token for reference',
-    'echo "${GATEWAY_TOKEN}" > /home/ubuntu/openclaw/.gateway-token',
-    'chown ubuntu:ubuntu /home/ubuntu/openclaw/.gateway-token',
-    'chmod 600 /home/ubuntu/openclaw/.gateway-token',
     '',
   ];
 }
