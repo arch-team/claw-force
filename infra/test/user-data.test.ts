@@ -34,23 +34,23 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('docker build -t openclaw:local');
   });
 
-  test('injects bedrockRegion into docker-compose environment', () => {
+  test('injects bedrockRegion into .env file', () => {
     const commands = buildUserDataCommands({
       ...defaultParams,
       bedrockRegion: 'ap-northeast-1',
     });
     const joined = commands.join('\n');
-    expect(joined).toContain('AWS_REGION: ap-northeast-1');
-    expect(joined).toContain('AWS_DEFAULT_REGION: ap-northeast-1');
+    expect(joined).toContain('AWS_REGION=ap-northeast-1');
+    expect(joined).toContain('AWS_DEFAULT_REGION=ap-northeast-1');
   });
 
-  test('injects bedrockModelId into docker-compose environment', () => {
+  test('injects bedrockModelId into .env file', () => {
     const commands = buildUserDataCommands({
       ...defaultParams,
       bedrockModelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
     });
     const joined = commands.join('\n');
-    expect(joined).toContain('OPENCLAW_MODEL: us.anthropic.claude-haiku-4-5-20251001-v1:0');
+    expect(joined).toContain('OPENCLAW_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0');
   });
 
   test('includes UFW firewall rules for all ports', () => {
@@ -102,5 +102,32 @@ describe('buildUserDataCommands', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
     expect(joined).toContain('"mode": "local"');
+  });
+
+  test('reads docker-compose.yml from assets directory', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('openclaw-gateway');
+    expect(joined).toContain('${AWS_REGION}');
+  });
+
+  test('reads openclaw.json from assets directory', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('${GATEWAY_TOKEN}');
+    expect(joined).toContain('envsubst');
+  });
+
+  test('writes .env file with deployment values', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('.env');
+    expect(joined).toContain('AWS_REGION=us-east-1');
+  });
+
+  test('installs gettext-base for envsubst', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('gettext-base');
   });
 });
