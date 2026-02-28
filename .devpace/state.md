@@ -8,8 +8,8 @@
 
 **迭代目标**：完成 OpenClaw→ClawForce 核心企业化适配，从 PoC 手动验证升级为可重复的自动化部署
 
-**当前工作**：Iter-1 规划完成，待开始开发
+**当前工作**：CR-001 CDK TypeScript 基础设施自动化部署（developing）→ 步骤 1/6：CDK 项目初始化
 
-**下一步**：`/pace-dev` 开始 PF-001（IaC 自动化部署）
+**下一步**：执行步骤 1 — CDK TypeScript 项目骨架创建
 
 <!-- devpace-version: 1.5.0 -->
