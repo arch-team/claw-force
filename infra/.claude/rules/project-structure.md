@@ -8,8 +8,6 @@
 
 ## 0. 速查卡片
 
-> Monorepo 结构概览请参考 [根级 common.md](../../../.claude/rules/common.md#monorepo-结构概览)
-
 ### Infra 目录结构 ← 当前位置
 
 ```
