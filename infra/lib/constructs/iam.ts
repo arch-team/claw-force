@@ -59,6 +59,11 @@ export class ClawForceIam extends Construct {
       }),
     );
 
+    // CloudWatch Agent permissions
+    this.role.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy'),
+    );
+
     this.instanceProfile = new iam.InstanceProfile(this, 'InstanceProfile', {
       role: this.role,
     });
