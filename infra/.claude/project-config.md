@@ -40,9 +40,9 @@ Stack 设计规范见 [architecture.md §2.1](rules/architecture.md#21-stack-职
 
 | 环境 | AWS 账户 | Region | 用途 |
 |------|---------|--------|------|
-| `dev` | 123456789012 | ap-northeast-1 | 开发测试 |
-| `staging` | 123456789013 | ap-northeast-1 | 预发布验证 |
-| `prod` | 123456789014 | ap-northeast-1 | 生产环境 |
+| `dev` | 123456789012 | us-east-1 | 开发测试 |
+| `staging` | 123456789013 | us-east-1 | 预发布验证 |
+| `prod` | 123456789014 | us-east-1 | 生产环境 |
 
 ### CDK Context 配置
 

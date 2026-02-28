@@ -10,7 +10,7 @@ tech_stack_ref: rules/tech-stack.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **注意**: 通用规范（响应语言、项目概述）请参考根目录 [../.claude/CLAUDE.md](../../.claude/CLAUDE.md)
+> **注意**: 通用规范（响应语言、项目概述）请参考 [根目录 CLAUDE.md](../../CLAUDE.md)
 
 ---
 
