@@ -45,18 +45,11 @@ describe('ClawForceAlb - HTTP mode (no certificate)', () => {
     });
   });
 
-  test('creates three target groups for OpenClaw services', () => {
+  test('creates single target group for Gateway (serves Control UI + WebSocket)', () => {
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::TargetGroup', 1);
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
       Port: 18789,
       Name: 'ClawForce-Gateway',
-    });
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
-      Port: 18790,
-      Name: 'ClawForce-ControlUI',
-    });
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
-      Port: 18791,
-      Name: 'ClawForce-Browser',
     });
   });
 
@@ -79,41 +72,11 @@ describe('ClawForceAlb - HTTP mode (no certificate)', () => {
     });
   });
 
-  test('creates path-based routing rules', () => {
-    // Gateway rule with /ws path
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::ListenerRule', {
-      Priority: 10,
-      Conditions: Match.arrayWith([
-        Match.objectLike({
-          Field: 'path-pattern',
-          PathPatternConfig: Match.objectLike({
-            Values: ['/ws', '/ws/*'],
-          }),
-        }),
-      ]),
-    });
-
-    // Browser rule with /browser path
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::ListenerRule', {
-      Priority: 20,
-      Conditions: Match.arrayWith([
-        Match.objectLike({
-          Field: 'path-pattern',
-          PathPatternConfig: Match.objectLike({
-            Values: ['/browser', '/browser/*'],
-          }),
-        }),
-      ]),
-    });
+  test('has no path-based routing rules (single TG handles all traffic)', () => {
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::ListenerRule', 0);
   });
 
-  test('configures health checks for target groups', () => {
-    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
-      Name: 'ClawForce-ControlUI',
-      HealthCheckPath: '/',
-      HealthCheckPort: '18790',
-    });
-
+  test('configures health check for gateway target group', () => {
     template.hasResourceProperties('AWS::ElasticLoadBalancingV2::TargetGroup', {
       Name: 'ClawForce-Gateway',
       HealthCheckPath: '/',
