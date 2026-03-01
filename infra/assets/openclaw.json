@@ -6,5 +6,12 @@
       "allowedOrigins": ["*"],
       "dangerouslyDisableDeviceAuth": true
     }
+  },
+  "models": {
+    "providers": {
+      "amazon-bedrock": {
+        "region": "us-east-1"
+      }
+    }
   }
 }

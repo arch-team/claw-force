@@ -106,7 +106,7 @@ export class ClawForceStack extends cdk.Stack {
         '# === Configure Gateway for ALB mode (CR-008) ===',
         `export ALB_ORIGIN="${protocol}://${albDns}"`,
         `export VPC_CIDR=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)`,
-        'python3 << \'PYEOF\'',
+        "python3 << 'PYEOF'",
         'import json, os',
         'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
         'with open(cfg_path) as f:',

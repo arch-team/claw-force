@@ -45,13 +45,15 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('AWS_DEFAULT_REGION=ap-northeast-1');
   });
 
-  test('injects bedrockModelId into .env file', () => {
+  test('injects bedrockModelId into .env file with amazon-bedrock/ prefix', () => {
     const commands = buildUserDataCommands({
       ...defaultParams,
       bedrockModelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
     });
     const joined = commands.join('\n');
-    expect(joined).toContain('OPENCLAW_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0');
+    expect(joined).toContain(
+      'OPENCLAW_MODEL=amazon-bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    );
   });
 
   test('includes UFW firewall rules for SSH and Gateway', () => {
@@ -118,6 +120,13 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('openclaw.json');
     expect(joined).toContain('"mode": "local"');
     expect(joined).not.toContain('envsubst');
+  });
+
+  test('openclaw.json includes Bedrock provider configuration', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('"amazon-bedrock"');
+    expect(joined).toContain('"region": "us-east-1"');
   });
 
   test('writes .env file with deployment values', () => {

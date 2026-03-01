@@ -24,10 +24,14 @@
     - [CR-002] 🚀 Bedrock 模型验证与配置增强（released via REL-001）
   - [PF-003] 🚀 企业级网络安全基线 — ALB + HTTPS + WAF 替代直接端口暴露，SG 策略优化 <!-- source: claude -->
     - [CR-003] 🚀 ALB+HTTPS+WAF 企业级网络安全基线（released via REL-001）
+    - [CR-007] 🐛 ALB Target Group 端口修正（适配 OpenClaw 实际端口分配）
+    - [CR-008] 🐛 Gateway CORS 配置适配 ALB（修复 origin not allowed 错误）
   - [PF-004] 🚀 基础运维可观测性 — CloudWatch 日志/指标集成，Gateway 健康检查，基本告警 <!-- source: claude -->
     - [CR-004] 🚀 CloudWatch 基础运维可观测性（released via REL-001）
   - [PF-009] 🚀 CDK 基础设施自动化测试覆盖 — Jest 测试覆盖所有 construct 和 stack 双模式 <!-- source: user -->
     - [CR-005] 🚀 CDK 基础设施自动化测试覆盖（released via REL-001）
+  - [PF-010] 🚀 CDK 代码质量与工程实践 — ESLint/Prettier 工具链、cdk-nag 合规、目录重构、测试倍增 <!-- source: user -->
+    - [CR-006] 🚀 CDK 基础设施全面优化（released via REL-002）
 - [BR-002] 企业级用户管理与安全 <!-- source: claude -->
   - [PF-005] ⏳ 设备配对企业化与 SSO 集成 <!-- source: claude -->
   - [PF-006] ⏳ Gateway OAuth 认证升级 <!-- source: claude -->

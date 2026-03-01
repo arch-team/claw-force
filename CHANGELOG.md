@@ -5,6 +5,25 @@ All notable changes to ClawForce will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-01
+
+### Features
+
+- [CR-006] CDK 基础设施全面优化（PF-010 CDK 代码质量与工程实践）
+  - 删除死代码，统一 Props 命名为 ClawForce{Name}Props 格式
+  - 添加 ESLint v10 + Prettier 工具链
+  - 为 6 个 constructs 补全独立单元测试，测试从 39 → 90
+  - 集成 cdk-nag AwsSolutionsChecks（resource-level suppressions）
+  - 目录重构：lib/stacks/ + lib/config/constants.ts
+  - 提取 UserData builder 模块和 Docker assets
+
+### Infrastructure
+
+- 测试覆盖率提升 130%（39 → 90 个测试用例）
+- 代码规范自动化（ESLint + Prettier + CDK Nag）
+- 消除 magic numbers，集中常量管理
+- 加固 .env 文件权限（chmod 600）
+
 ## [0.1.0] - 2026-02-28
 
 ### Features
@@ -22,4 +41,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 建立 13 个 AWS 资源的完整 IaC 基础设施
 - 集成 CloudWatch 监控和告警系统
 
+[0.2.0]: https://github.com/your-org/claw-force/releases/tag/v0.2.0
 [0.1.0]: https://github.com/your-org/claw-force/releases/tag/v0.1.0
