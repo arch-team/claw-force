@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { OPENCLAW_PORTS } from '../config/constants';
+import { OPENCLAW_PORTS, BEDROCK_PROVIDER_KEY } from '../config/constants';
 
 /**
  * UserData script builder for ClawForce EC2 instance.
@@ -88,6 +88,30 @@ export function buildUserDataSetupCommands(params: UserDataParams): string[] {
   ];
 }
 
+/**
+ * Build the shell commands that patch openclaw.json with ALB CORS origin
+ * and trusted proxy CIDR. Runs at deploy time via IMDSv2.
+ */
+export function buildAlbCorsCommands(albDns: string, protocol: string): string[] {
+  return [
+    '# === Configure Gateway for ALB mode (CR-008) ===',
+    `export ALB_ORIGIN="${protocol}://${albDns}"`,
+    '# IMDSv2: get token first, then query VPC CIDR',
+    'IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")',
+    'export VPC_CIDR=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)',
+    "python3 << 'PYEOF'",
+    'import json, os',
+    'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
+    'with open(cfg_path) as f:',
+    '    cfg = json.load(f)',
+    'cfg["gateway"]["controlUi"]["allowedOrigins"] = [os.environ["ALB_ORIGIN"]]',
+    'cfg["gateway"]["trustedProxies"] = [os.environ.get("VPC_CIDR", "172.31.0.0/16")]',
+    'with open(cfg_path, "w") as f:',
+    '    json.dump(cfg, f, indent=2)',
+    'PYEOF',
+  ];
+}
+
 /** Commands to start the OpenClaw container. Call after all config is written. */
 export function startOpenClawCommands(): string[] {
   return ['# === Start OpenClaw ===', 'su - ubuntu -c "cd ~/openclaw && docker compose up -d"', ''];
@@ -156,7 +180,7 @@ function buildOpenClawConfig(
     },
     models: {
       providers: {
-        'amazon-bedrock': {
+        [BEDROCK_PROVIDER_KEY]: {
           baseUrl: `https://bedrock-runtime.${bedrockRegion}.amazonaws.com`,
           api: 'bedrock-converse-stream',
           auth: 'aws-sdk',
@@ -167,7 +191,7 @@ function buildOpenClawConfig(
     agents: {
       defaults: {
         model: {
-          primary: `amazon-bedrock/${bedrockModelId}`,
+          primary: `${BEDROCK_PROVIDER_KEY}/${bedrockModelId}`,
         },
       },
     },

@@ -2,11 +2,10 @@ import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cdk from 'aws-cdk-lib/core';
 import { NagSuppressions } from 'cdk-nag';
-import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceIamProps {
-  /** AWS region for Bedrock access (default: us-east-1) */
-  readonly bedrockRegion?: string;
+  /** AWS region for Bedrock access */
+  readonly bedrockRegion: string;
 }
 
 /**
@@ -20,10 +19,10 @@ export class ClawForceIam extends Construct {
   public readonly role: iam.Role;
   public readonly instanceProfile: iam.InstanceProfile;
 
-  constructor(scope: Construct, id: string, props: ClawForceIamProps = {}) {
+  constructor(scope: Construct, id: string, props: ClawForceIamProps) {
     super(scope, id);
 
-    const region = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
+    const region = props.bedrockRegion;
 
     this.role = new iam.Role(this, 'Role', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),

@@ -87,21 +87,22 @@ describe('ClawForceMonitoring', () => {
   });
 
   describe('agent config generation', () => {
-    test('returns valid JSON with required sections', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let config: any;
+
+    beforeAll(() => {
       const stack = new cdk.Stack();
       const monitoring = new ClawForceMonitoring(stack, 'Monitoring');
-      const config = JSON.parse(monitoring.getAgentConfig());
+      config = JSON.parse(monitoring.getAgentConfig());
+    });
 
+    test('returns valid JSON with required sections', () => {
       expect(config).toHaveProperty('agent');
       expect(config).toHaveProperty('logs');
       expect(config).toHaveProperty('metrics');
     });
 
     test('configures setup log collection', () => {
-      const stack = new cdk.Stack();
-      const monitoring = new ClawForceMonitoring(stack, 'Monitoring');
-      const config = JSON.parse(monitoring.getAgentConfig());
-
       const collectList = config.logs.logs_collected.files.collect_list;
       expect(collectList).toHaveLength(1);
       expect(collectList[0].file_path).toBe('/var/log/clawforce-setup.log');
@@ -110,10 +111,6 @@ describe('ClawForceMonitoring', () => {
     });
 
     test('configures disk and memory metrics', () => {
-      const stack = new cdk.Stack();
-      const monitoring = new ClawForceMonitoring(stack, 'Monitoring');
-      const config = JSON.parse(monitoring.getAgentConfig());
-
       expect(config.metrics.namespace).toBe('ClawForce');
       expect(config.metrics.metrics_collected).toHaveProperty('disk');
       expect(config.metrics.metrics_collected).toHaveProperty('mem');

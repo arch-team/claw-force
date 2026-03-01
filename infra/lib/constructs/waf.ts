@@ -30,38 +30,8 @@ export class ClawForceWaf extends Construct {
         sampledRequestsEnabled: true,
       },
       rules: [
-        {
-          name: 'AWSManagedRulesCommonRuleSet',
-          priority: 1,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
-              name: 'AWSManagedRulesCommonRuleSet',
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: 'CommonRuleSet',
-            sampledRequestsEnabled: true,
-          },
-        },
-        {
-          name: 'AWSManagedRulesKnownBadInputsRuleSet',
-          priority: 2,
-          overrideAction: { none: {} },
-          statement: {
-            managedRuleGroupStatement: {
-              vendorName: 'AWS',
-              name: 'AWSManagedRulesKnownBadInputsRuleSet',
-            },
-          },
-          visibilityConfig: {
-            cloudWatchMetricsEnabled: true,
-            metricName: 'KnownBadInputsRuleSet',
-            sampledRequestsEnabled: true,
-          },
-        },
+        managedRuleGroup('AWSManagedRulesCommonRuleSet', 1, 'CommonRuleSet'),
+        managedRuleGroup('AWSManagedRulesKnownBadInputsRuleSet', 2, 'KnownBadInputsRuleSet'),
       ],
     });
 
@@ -71,4 +41,28 @@ export class ClawForceWaf extends Construct {
       resourceArn: props.albArn,
     });
   }
+}
+
+/** Build an AWS Managed Rule Group entry for the WebACL rules array. */
+function managedRuleGroup(
+  name: string,
+  priority: number,
+  metricName: string,
+): wafv2.CfnWebACL.RuleProperty {
+  return {
+    name,
+    priority,
+    overrideAction: { none: {} },
+    statement: {
+      managedRuleGroupStatement: {
+        vendorName: 'AWS',
+        name,
+      },
+    },
+    visibilityConfig: {
+      cloudWatchMetricsEnabled: true,
+      metricName,
+      sampledRequestsEnabled: true,
+    },
+  };
 }

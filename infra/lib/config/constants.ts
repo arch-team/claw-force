@@ -9,6 +9,9 @@ export const OPENCLAW_PORTS = {
   GATEWAY: 18789,
 } as const;
 
+/** Bedrock provider key used in OpenClaw config */
+export const BEDROCK_PROVIDER_KEY = 'amazon-bedrock' as const;
+
 /** Default configuration values */
 export const DEFAULTS = {
   INSTANCE_TYPE: 't3.medium',

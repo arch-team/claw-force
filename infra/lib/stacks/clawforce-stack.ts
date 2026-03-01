@@ -9,7 +9,7 @@ import { ClawForceAlb } from '../constructs/alb';
 import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
-import { startOpenClawCommands } from '../constructs/user-data';
+import { buildAlbCorsCommands, startOpenClawCommands } from '../constructs/user-data';
 
 /**
  * Token fragment for auto-authentication.
@@ -43,6 +43,8 @@ export class ClawForceStack extends cdk.Stack {
 
     const allowedCidr = props.allowedCidr ?? DEFAULTS.ALLOWED_CIDR;
     const bedrockRegion = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
+    const bedrockModelId = props.bedrockModelId ?? DEFAULTS.BEDROCK_MODEL_ID;
+    const gatewayToken = DEFAULTS.GATEWAY_TOKEN;
     const enableAlb = props.enableAlb ?? true;
 
     // Use default VPC (consistent with PoC approach)
@@ -73,7 +75,8 @@ export class ClawForceStack extends cdk.Stack {
       volumeSize: props.volumeSize,
       keyPairName: props.keyPairName,
       bedrockRegion,
-      bedrockModelId: props.bedrockModelId,
+      bedrockModelId,
+      gatewayToken,
       cloudWatchAgentConfig: monitoring.getAgentConfig(),
       deferStart: enableAlb,
     });
@@ -112,21 +115,7 @@ export class ClawForceStack extends cdk.Stack {
       const albDns = albConstruct.alb.loadBalancerDnsName;
       const protocol = props.certificateArn ? 'https' : 'http';
       compute.instance.userData.addCommands(
-        '# === Configure Gateway for ALB mode (CR-008) ===',
-        `export ALB_ORIGIN="${protocol}://${albDns}"`,
-        '# IMDSv2: get token first, then query VPC CIDR',
-        'IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")',
-        'export VPC_CIDR=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)',
-        "python3 << 'PYEOF'",
-        'import json, os',
-        'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
-        'with open(cfg_path) as f:',
-        '    cfg = json.load(f)',
-        'cfg["gateway"]["controlUi"]["allowedOrigins"] = [os.environ["ALB_ORIGIN"]]',
-        'cfg["gateway"]["trustedProxies"] = [os.environ.get("VPC_CIDR", "172.31.0.0/16")]',
-        'with open(cfg_path, "w") as f:',
-        '    json.dump(cfg, f, indent=2)',
-        'PYEOF',
+        ...buildAlbCorsCommands(albDns, protocol),
         '',
         '# === Start OpenClaw (after all config is finalized) ===',
         ...startOpenClawCommands(),

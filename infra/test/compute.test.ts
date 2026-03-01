@@ -30,6 +30,9 @@ function createComputeStack(
     vpc,
     securityGroup: sg,
     role,
+    bedrockRegion: 'us-east-1',
+    bedrockModelId: 'us.anthropic.claude-sonnet-4-6',
+    gatewayToken: 'test-token',
     ...overrides,
   });
 

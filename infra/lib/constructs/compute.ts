@@ -18,12 +18,12 @@ export interface ClawForceComputeProps {
   readonly volumeSize?: number;
   /** SSH key pair name (optional) */
   readonly keyPairName?: string;
-  /** AWS region for Bedrock (default: us-east-1) */
-  readonly bedrockRegion?: string;
+  /** AWS region for Bedrock */
+  readonly bedrockRegion: string;
   /** Bedrock model ID in Inference Profile format */
-  readonly bedrockModelId?: string;
-  /** OpenClaw Gateway token (generated if not provided) */
-  readonly gatewayToken?: string;
+  readonly bedrockModelId: string;
+  /** OpenClaw Gateway token */
+  readonly gatewayToken: string;
   /** CloudWatch Agent config JSON (injected by monitoring construct) */
   readonly cloudWatchAgentConfig?: string;
   /** If true, use setup-only UserData (stack will add start commands after ALB config) */
@@ -48,8 +48,6 @@ export class ClawForceCompute extends Construct {
 
     const instanceType = new ec2.InstanceType(props.instanceType ?? DEFAULTS.INSTANCE_TYPE);
     const volumeSize = props.volumeSize ?? DEFAULTS.VOLUME_SIZE;
-    const bedrockRegion = props.bedrockRegion ?? DEFAULTS.BEDROCK_REGION;
-    const bedrockModelId = props.bedrockModelId ?? DEFAULTS.BEDROCK_MODEL_ID;
 
     // Ubuntu 24.04 LTS AMI lookup
     const machineImage = ec2.MachineImage.lookup({
@@ -60,11 +58,10 @@ export class ClawForceCompute extends Construct {
     // User Data script with all PoC fixes (see user-data.ts for details)
     // When deferStart=true, setup commands only — stack adds ALB config then start.
     const userData = ec2.UserData.forLinux();
-    const gatewayToken = props.gatewayToken ?? DEFAULTS.GATEWAY_TOKEN;
     const userDataParams = {
-      bedrockRegion,
-      bedrockModelId,
-      gatewayToken,
+      bedrockRegion: props.bedrockRegion,
+      bedrockModelId: props.bedrockModelId,
+      gatewayToken: props.gatewayToken,
       cloudWatchAgentConfig: props.cloudWatchAgentConfig,
     };
     userData.addCommands(
