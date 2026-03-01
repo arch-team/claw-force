@@ -19,7 +19,7 @@ export const DEFAULTS = {
   INSTANCE_TYPE: 't3.medium',
   VOLUME_SIZE: 30,
   BEDROCK_REGION: 'us-east-1',
-  BEDROCK_MODEL_ID: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+  BEDROCK_MODEL_ID: 'us.anthropic.claude-sonnet-4-6',
   LOG_RETENTION_DAYS: 30,
   ALLOWED_CIDR: '0.0.0.0/0',
   /**

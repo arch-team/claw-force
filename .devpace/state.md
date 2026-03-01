@@ -8,8 +8,8 @@
 
 **迭代目标**：完成 OpenClaw→ClawForce 核心企业化适配，从 PoC 手动验证升级为可重复的自动化部署
 
-**当前工作**：CR-006 已合并
+**当前工作**：CR-008 已修复并部署验证通过（chat 页面 HTTP 200 OK，CORS 错误消除）
 
-**下一步**：`/pace-plan next` 规划 Iter-2
+**下一步**：Review CR-007 + CR-008，合并到 main，然后 `/pace-release close` 完成 REL-002
 
 <!-- devpace-version: 1.5.0 -->

@@ -91,7 +91,11 @@ function readAsset(filename: string): string {
   return fs.readFileSync(path.join(ASSETS_DIR, filename), 'utf-8');
 }
 
-function openClawDeploy(bedrockRegion: string, bedrockModelId: string, gatewayToken: string): string[] {
+function openClawDeploy(
+  bedrockRegion: string,
+  bedrockModelId: string,
+  gatewayToken: string,
+): string[] {
   const composeContent = readAsset('docker-compose.yml');
   const configContent = readAsset('openclaw.json');
 
@@ -117,10 +121,12 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string, gatewayTo
     'COMPOSE',
     '',
     `# Write .env with deployment-specific values (PoC fix #10/#5)`,
+    `# CR-009 fix: Model ID must use amazon-bedrock/ prefix so OpenClaw routes to`,
+    `# Bedrock provider (IAM auth via IMDS) instead of direct Anthropic API (API key).`,
     `cat > /home/ubuntu/openclaw/.env << ENV`,
     `AWS_REGION=${bedrockRegion}`,
     `AWS_DEFAULT_REGION=${bedrockRegion}`,
-    `OPENCLAW_MODEL=${bedrockModelId}`,
+    `OPENCLAW_MODEL=amazon-bedrock/${bedrockModelId}`,
     `OPENCLAW_GATEWAY_TOKEN=${gatewayToken}`,
     'ENV',
     '',

@@ -29,13 +29,13 @@ const MODEL_PRESETS: Record<string, { name: string; inferenceProfileId: string }
     name: 'Claude Haiku 4.5',
     inferenceProfileId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
   },
-  'claude-sonnet-4-5': {
-    name: 'Claude Sonnet 4.5',
-    inferenceProfileId: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+  'claude-sonnet-4-6': {
+    name: 'Claude Sonnet 4.6',
+    inferenceProfileId: 'us.anthropic.claude-sonnet-4-6',
   },
-  'claude-opus-4-5': {
-    name: 'Claude Opus 4.5',
-    inferenceProfileId: 'us.anthropic.claude-opus-4-5-20251101-v1:0',
+  'claude-opus-4-6': {
+    name: 'Claude Opus 4.6',
+    inferenceProfileId: 'us.anthropic.claude-opus-4-6-v1',
   },
 };
 
@@ -47,7 +47,7 @@ function loadCdkContext(): CdkContext {
 
 /**
  * Extract the foundation model ID from an Inference Profile format ID.
- * Example: "us.anthropic.claude-sonnet-4-5-20250929-v1:0" -> "anthropic.claude-sonnet-4-5-20250929-v1:0"
+ * Example: "us.anthropic.claude-sonnet-4-6" -> "anthropic.claude-sonnet-4-6"
  */
 function extractFoundationModelId(inferenceProfileId: string): string {
   // Inference Profile format: {region-prefix}.{provider}.{model}
@@ -62,7 +62,7 @@ function extractFoundationModelId(inferenceProfileId: string): string {
 async function validateModel(): Promise<void> {
   const context = loadCdkContext();
   const region = context.bedrockRegion ?? 'us-east-1';
-  const configuredModel = context.bedrockModelId ?? MODEL_PRESETS['claude-sonnet-4-5'].inferenceProfileId;
+  const configuredModel = context.bedrockModelId ?? MODEL_PRESETS['claude-sonnet-4-6'].inferenceProfileId;
 
   console.log('=== ClawForce Bedrock Model Validation ===\n');
   console.log(`Region:           ${region}`);
