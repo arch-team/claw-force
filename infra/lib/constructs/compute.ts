@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { NagSuppressions } from 'cdk-nag';
-import { buildUserDataCommands } from './user-data';
+import { buildUserDataCommands, buildUserDataSetupCommands } from './user-data';
 import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceComputeProps {
@@ -26,6 +26,8 @@ export interface ClawForceComputeProps {
   gatewayToken?: string;
   /** CloudWatch Agent config JSON (injected by monitoring construct) */
   cloudWatchAgentConfig?: string;
+  /** If true, use setup-only UserData (stack will add start commands after ALB config) */
+  deferStart?: boolean;
 }
 
 /**
@@ -56,15 +58,19 @@ export class ClawForceCompute extends Construct {
     });
 
     // User Data script with all PoC fixes (see user-data.ts for details)
+    // When deferStart=true, setup commands only — stack adds ALB config then start.
     const userData = ec2.UserData.forLinux();
     const gatewayToken = props.gatewayToken ?? DEFAULTS.GATEWAY_TOKEN;
+    const userDataParams = {
+      bedrockRegion,
+      bedrockModelId,
+      gatewayToken,
+      cloudWatchAgentConfig: props.cloudWatchAgentConfig,
+    };
     userData.addCommands(
-      ...buildUserDataCommands({
-        bedrockRegion,
-        bedrockModelId,
-        gatewayToken,
-        cloudWatchAgentConfig: props.cloudWatchAgentConfig,
-      }),
+      ...(props.deferStart
+        ? buildUserDataSetupCommands(userDataParams)
+        : buildUserDataCommands(userDataParams)),
     );
 
     this.instance = new ec2.Instance(this, 'Instance', {

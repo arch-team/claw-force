@@ -35,16 +35,33 @@ export interface UserDataParams {
 /** Build the complete UserData command list */
 export function buildUserDataCommands(params: UserDataParams): string[] {
   return [
+    ...buildUserDataSetupCommands(params),
+    ...startOpenClawCommands(),
+    '',
+    'echo "ClawForce OpenClaw setup complete at $(date)"',
+  ];
+}
+
+/**
+ * Build setup commands (everything BEFORE docker compose up).
+ *
+ * Use this when the stack needs to inject additional config (e.g., ALB CORS)
+ * between setup and container start. Follow with startOpenClawCommands().
+ */
+export function buildUserDataSetupCommands(params: UserDataParams): string[] {
+  return [
     ...preamble(),
     ...systemSetup(),
     ...dockerInstall(),
     ...openClawDeploy(params.bedrockRegion, params.bedrockModelId, params.gatewayToken),
     ...ufwFirewall(),
-    ...startOpenClaw(),
     ...cloudWatchAgent(params.cloudWatchAgentConfig),
-    '',
-    'echo "ClawForce OpenClaw setup complete at $(date)"',
   ];
+}
+
+/** Commands to start the OpenClaw container. Call after all config is written. */
+export function startOpenClawCommands(): string[] {
+  return startOpenClaw();
 }
 
 function preamble(): string[] {

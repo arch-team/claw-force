@@ -9,6 +9,7 @@ import { ClawForceAlb } from '../constructs/alb';
 import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
+import { startOpenClawCommands } from '../constructs/user-data';
 
 /** Token fragment appended to dashboard URLs for auto-authentication */
 const TOKEN_HASH = `#token=${DEFAULTS.GATEWAY_TOKEN}`;
@@ -58,6 +59,8 @@ export class ClawForceStack extends cdk.Stack {
     });
 
     // Compute: EC2 + EBS + User Data with all PoC fixes + CloudWatch Agent
+    // When ALB is enabled, deferStart=true so we can inject ALB CORS config
+    // before docker compose up (eliminates CORS gap on fresh instances).
     const compute = new ClawForceCompute(this, 'Compute', {
       vpc,
       securityGroup: networking.securityGroup,
@@ -68,6 +71,7 @@ export class ClawForceStack extends cdk.Stack {
       bedrockRegion,
       bedrockModelId: props.bedrockModelId,
       cloudWatchAgentConfig: monitoring.getAgentConfig(),
+      deferStart: enableAlb,
     });
 
     // Monitoring: Alarms (phase 2 - after compute)
@@ -97,15 +101,18 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       // Configure Gateway for ALB mode (CR-008):
-      // 1. CORS: inject concrete ALB DNS (wildcard "*" not supported)
+      // 1. CORS: inject concrete ALB DNS (wildcard "*" not supported by OpenClaw)
       // 2. Trusted Proxies: ALB internal IP so OpenClaw treats proxied requests as local
-      // These commands run after docker compose up, then restart the container.
+      // These commands run BEFORE docker compose up (deferStart=true above),
+      // so the container starts with correct config — no restart needed.
       const albDns = albConstruct.alb.loadBalancerDnsName;
       const protocol = props.certificateArn ? 'https' : 'http';
       compute.instance.userData.addCommands(
         '# === Configure Gateway for ALB mode (CR-008) ===',
         `export ALB_ORIGIN="${protocol}://${albDns}"`,
-        `export VPC_CIDR=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)`,
+        '# IMDSv2: get token first, then query VPC CIDR',
+        'IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")',
+        'export VPC_CIDR=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)',
         "python3 << 'PYEOF'",
         'import json, os',
         'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
@@ -116,9 +123,11 @@ export class ClawForceStack extends cdk.Stack {
         'with open(cfg_path, "w") as f:',
         '    json.dump(cfg, f, indent=2)',
         'PYEOF',
-        '# Restart Gateway to apply ALB configuration',
-        'su - ubuntu -c "cd ~/openclaw && docker compose restart"',
         '',
+        '# === Start OpenClaw (after all config is finalized) ===',
+        ...startOpenClawCommands(),
+        '',
+        'echo "ClawForce OpenClaw setup complete at $(date)"',
       );
     } else {
       // Direct mode: Gateway port from allowed CIDR (serves both Gateway + Control UI)
