@@ -9,11 +9,11 @@ import { OPENCLAW_PORTS } from '../config/constants';
 
 export interface ClawForceAlbProps {
   /** VPC for the ALB */
-  vpc: ec2.IVpc;
+  readonly vpc: ec2.IVpc;
   /** EC2 instance to forward traffic to */
-  instance: ec2.Instance;
+  readonly instance: ec2.Instance;
   /** ACM certificate ARN for HTTPS (optional - HTTP only if omitted) */
-  certificateArn?: string;
+  readonly certificateArn?: string;
 }
 
 /**

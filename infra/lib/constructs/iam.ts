@@ -6,7 +6,7 @@ import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceIamProps {
   /** AWS region for Bedrock access (default: us-east-1) */
-  bedrockRegion?: string;
+  readonly bedrockRegion?: string;
 }
 
 /**

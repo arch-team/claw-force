@@ -3,7 +3,7 @@ import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 
 export interface ClawForceWafProps {
   /** ALB ARN to associate the WebACL with */
-  albArn: string;
+  readonly albArn: string;
 }
 
 /**

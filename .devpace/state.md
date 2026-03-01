@@ -8,8 +8,8 @@
 
 **迭代目标**：完成 OpenClaw→ClawForce 核心企业化适配，从 PoC 手动验证升级为可重复的自动化部署
 
-**当前工作**：CR-008 已修复并部署验证通过（chat 页面 HTTP 200 OK，CORS 错误消除）
+**当前工作**：CR-009 已合并（Bedrock 认证修复 + 模型升级 4.6）
 
-**下一步**：Review CR-007 + CR-008，合并到 main，然后 `/pace-release close` 完成 REL-002
+**下一步**：部署验证（cdk deploy 或手动修改现有 instance .env），确认 OpenClaw 对话功能恢复
 
 <!-- devpace-version: 1.5.0 -->

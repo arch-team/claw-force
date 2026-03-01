@@ -4,16 +4,16 @@ import { NagSuppressions } from 'cdk-nag';
 
 export interface ClawForceNetworkingProps {
   /** VPC to place the security group in */
-  vpc: ec2.IVpc;
+  readonly vpc: ec2.IVpc;
   /** CIDR range allowed for SSH management access (e.g. "72.21.198.64/32") */
-  allowedCidr: string;
+  readonly allowedCidr: string;
 }
 
 /**
  * Security Group construct for ClawForce EC2 instance.
  *
- * Creates base SG with SSH access only. OpenClaw service ports (18789/18790/18791)
- * are managed by the stack based on ALB mode:
+ * Creates base SG with SSH access only. OpenClaw Gateway port (18789)
+ * is managed by the stack based on ALB mode:
  * - ALB enabled: ports accept ALB security group traffic only
  * - ALB disabled: ports accept allowedCidr traffic directly (backward compatible)
  */

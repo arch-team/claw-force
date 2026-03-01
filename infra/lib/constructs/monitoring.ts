@@ -7,7 +7,7 @@ import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceMonitoringProps {
   /** Log retention in days (default: 30) */
-  logRetentionDays?: number;
+  readonly logRetentionDays?: number;
 }
 
 /**

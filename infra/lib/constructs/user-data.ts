@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { OPENCLAW_PORTS } from '../config/constants';
 
 /**
  * UserData script builder for ClawForce EC2 instance.
@@ -23,13 +24,13 @@ const ASSETS_DIR = path.resolve(__dirname, '../../assets');
 
 export interface UserDataParams {
   /** AWS region for Bedrock */
-  bedrockRegion: string;
+  readonly bedrockRegion: string;
   /** Bedrock model ID in Inference Profile format (e.g. us.anthropic.claude-sonnet-4-6) */
-  bedrockModelId: string;
+  readonly bedrockModelId: string;
   /** Gateway auth token (required by OpenClaw for --bind lan) */
-  gatewayToken: string;
+  readonly gatewayToken: string;
   /** CloudWatch Agent config JSON (optional) */
-  cloudWatchAgentConfig?: string;
+  readonly cloudWatchAgentConfig?: string;
 }
 
 /** Bedrock model presets for OpenClaw provider catalog */
@@ -53,6 +54,7 @@ const BEDROCK_MODELS = [
   {
     id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
     name: 'Claude Haiku 4.5 (Bedrock)',
+    reasoning: false,
     input: ['text', 'image'],
     contextWindow: 200000,
     maxTokens: 8192,
@@ -88,7 +90,7 @@ export function buildUserDataSetupCommands(params: UserDataParams): string[] {
 
 /** Commands to start the OpenClaw container. Call after all config is written. */
 export function startOpenClawCommands(): string[] {
-  return startOpenClaw();
+  return ['# === Start OpenClaw ===', 'su - ubuntu -c "cd ~/openclaw && docker compose up -d"', ''];
 }
 
 function preamble(): string[] {
@@ -104,8 +106,6 @@ function systemSetup(): string[] {
   return [
     '# === System Setup ===',
     'export DEBIAN_FRONTEND=noninteractive',
-    'apt-get update -y',
-    'apt-get upgrade -y',
     '',
     '# PoC fix #2: Ubuntu 24.04 uses ssh.service (not sshd.service)',
     'sed -i "s/#PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config',
@@ -118,6 +118,7 @@ function systemSetup(): string[] {
 function dockerInstall(): string[] {
   return [
     '# === Docker Installation ===',
+    'apt-get update -y',
     'apt-get install -y ca-certificates curl gnupg',
     'install -m 0755 -d /etc/apt/keyrings',
     'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg',
@@ -128,11 +129,6 @@ function dockerInstall(): string[] {
     'usermod -aG docker ubuntu',
     '',
   ];
-}
-
-/** Read an asset file at CDK synth time */
-function readAsset(filename: string): string {
-  return fs.readFileSync(path.join(ASSETS_DIR, filename), 'utf-8');
 }
 
 /**
@@ -184,7 +180,7 @@ function openClawDeploy(
   bedrockModelId: string,
   gatewayToken: string,
 ): string[] {
-  const composeContent = readAsset('docker-compose.yml');
+  const composeContent = fs.readFileSync(path.join(ASSETS_DIR, 'docker-compose.yml'), 'utf-8');
   const configJson = buildOpenClawConfig(bedrockRegion, bedrockModelId, gatewayToken);
 
   return [
@@ -229,14 +225,10 @@ function ufwFirewall(): string[] {
     '# Fix: Docker port mapping requires FORWARD ACCEPT policy (UFW default is DROP)',
     'sed -i \'s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/\' /etc/default/ufw',
     'ufw allow 22/tcp',
-    'ufw allow 18789/tcp',
+    `ufw allow ${OPENCLAW_PORTS.GATEWAY}/tcp`,
     'ufw --force enable',
     '',
   ];
-}
-
-function startOpenClaw(): string[] {
-  return ['# === Start OpenClaw ===', 'su - ubuntu -c "cd ~/openclaw && docker compose up -d"', ''];
 }
 
 function cloudWatchAgent(configJson?: string): string[] {

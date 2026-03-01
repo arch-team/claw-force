@@ -11,26 +11,30 @@ import { ClawForceMonitoring } from '../constructs/monitoring';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
 import { startOpenClawCommands } from '../constructs/user-data';
 
-/** Token fragment appended to dashboard URLs for auto-authentication */
-const TOKEN_HASH = `#token=${DEFAULTS.GATEWAY_TOKEN}`;
+/**
+ * Token fragment for auto-authentication.
+ * NOT included in CfnOutputs to avoid leaking via CloudFormation describe-stacks.
+ * Users should append manually: URL/#token=<your-token>
+ */
+const TOKEN_HINT = '/#token=<your-gateway-token>';
 
 export interface ClawForceStackProps extends cdk.StackProps {
   /** CIDR range allowed for SSH and management access */
-  allowedCidr?: string;
+  readonly allowedCidr?: string;
   /** EC2 instance type (default: t3.medium) */
-  instanceType?: string;
+  readonly instanceType?: string;
   /** EBS volume size in GB (default: 30) */
-  volumeSize?: number;
+  readonly volumeSize?: number;
   /** SSH key pair name (optional - no SSH key if omitted) */
-  keyPairName?: string;
+  readonly keyPairName?: string;
   /** AWS region for Bedrock (default: us-east-1) */
-  bedrockRegion?: string;
+  readonly bedrockRegion?: string;
   /** Bedrock model ID in Inference Profile format */
-  bedrockModelId?: string;
+  readonly bedrockModelId?: string;
   /** ACM certificate ARN for HTTPS (optional - HTTP only if omitted) */
-  certificateArn?: string;
+  readonly certificateArn?: string;
   /** Enable ALB + WAF (default: true) */
-  enableAlb?: boolean;
+  readonly enableAlb?: boolean;
 }
 
 export class ClawForceStack extends cdk.Stack {
@@ -174,8 +178,8 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}/${TOKEN_HASH}`,
-        description: 'OpenClaw Control UI URL (via ALB, auto-authenticated)',
+        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}/`,
+        description: `OpenClaw Control UI URL (via ALB) — append ${TOKEN_HINT} to auto-authenticate`,
       });
 
       new cdk.CfnOutput(this, 'GatewayUrl', {
@@ -184,13 +188,13 @@ export class ClawForceStack extends cdk.Stack {
       });
     } else {
       new cdk.CfnOutput(this, 'GatewayUrl', {
-        value: `ws://${compute.instance.instancePublicIp}:18789`,
+        value: `ws://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}`,
         description: 'OpenClaw Gateway WebSocket URL',
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `http://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}/${TOKEN_HASH}`,
-        description: 'OpenClaw Control UI URL (auto-authenticated)',
+        value: `http://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}/`,
+        description: `OpenClaw Control UI URL — append ${TOKEN_HINT} to auto-authenticate`,
       });
     }
   }

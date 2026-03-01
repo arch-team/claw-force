@@ -7,27 +7,27 @@ import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceComputeProps {
   /** VPC to launch the instance in */
-  vpc: ec2.IVpc;
+  readonly vpc: ec2.IVpc;
   /** Security group for the instance */
-  securityGroup: ec2.SecurityGroup;
+  readonly securityGroup: ec2.SecurityGroup;
   /** IAM role for the instance */
-  role: iam.Role;
+  readonly role: iam.Role;
   /** EC2 instance type (default: t3.medium) */
-  instanceType?: string;
+  readonly instanceType?: string;
   /** EBS volume size in GB (default: 30) */
-  volumeSize?: number;
+  readonly volumeSize?: number;
   /** SSH key pair name (optional) */
-  keyPairName?: string;
+  readonly keyPairName?: string;
   /** AWS region for Bedrock (default: us-east-1) */
-  bedrockRegion?: string;
+  readonly bedrockRegion?: string;
   /** Bedrock model ID in Inference Profile format */
-  bedrockModelId?: string;
+  readonly bedrockModelId?: string;
   /** OpenClaw Gateway token (generated if not provided) */
-  gatewayToken?: string;
+  readonly gatewayToken?: string;
   /** CloudWatch Agent config JSON (injected by monitoring construct) */
-  cloudWatchAgentConfig?: string;
+  readonly cloudWatchAgentConfig?: string;
   /** If true, use setup-only UserData (stack will add start commands after ALB config) */
-  deferStart?: boolean;
+  readonly deferStart?: boolean;
 }
 
 /**
