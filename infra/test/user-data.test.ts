@@ -122,11 +122,10 @@ describe('buildUserDataCommands', () => {
     expect(joined).not.toContain('envsubst');
   });
 
-  test('openclaw.json includes Bedrock provider configuration', () => {
+  test('openclaw.json does not include invalid models.providers section', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).toContain('"amazon-bedrock"');
-    expect(joined).toContain('"region": "us-east-1"');
+    expect(joined).not.toContain('"amazon-bedrock"');
   });
 
   test('writes .env file with deployment values', () => {
