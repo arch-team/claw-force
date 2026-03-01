@@ -174,9 +174,10 @@ describe('buildUserDataCommands with Feishu', () => {
     expect(joined).toContain('"connectionMode": "websocket"');
   });
 
-  test('enables streaming and pairing by default', () => {
+  test('enables streaming and open DM by default', () => {
     expect(joined).toContain('"streaming": true');
-    expect(joined).toContain('"dmPolicy": "pairing"');
+    expect(joined).toContain('"dmPolicy": "open"');
+    expect(joined).toContain('"allowFrom"');
     expect(joined).toContain('"groupPolicy": "allowlist"');
     expect(joined).toContain('"requireMention": true');
   });

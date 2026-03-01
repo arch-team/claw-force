@@ -100,8 +100,8 @@
     "@aws-cdk/aws-elasticloadbalancingv2:networkLoadBalancerWithSecurityGroupByDefault": true,
     "@aws-cdk/aws-ecs-patterns:uniqueTargetGroupId": true,
 
-    "feishuAppId": "",
-    "feishuAppSecret": "",
+    "feishuAppId": "cli_a92ef55d4f38dbc8",
+    "feishuAppSecret": "jPfAmiUtSqVF0UOdeYZWMfNXJ5KQ4ji0",
 
     "bedrockRegion": "us-east-1",
     "bedrockModelId": "us.anthropic.claude-sonnet-4-6",
