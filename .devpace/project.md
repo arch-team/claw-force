@@ -32,6 +32,13 @@
     - [CR-005] 🚀 CDK 基础设施自动化测试覆盖（released via REL-001）
   - [PF-010] 🚀 CDK 代码质量与工程实践 — ESLint/Prettier 工具链、cdk-nag 合规、目录重构、测试倍增 <!-- source: user -->
     - [CR-006] 🚀 CDK 基础设施全面优化（released via REL-002）
+- [BR-004] AI 员工业务场景集成 <!-- source: user -->
+  - [PF-011] ✅ 部署验证与对话功能恢复 — cdk deploy 端到端验证，确认 CR-007/008/009 修复后 OpenClaw 对话功能正常 <!-- source: claude -->
+    - [CR-010] ✅ 部署验证（代码状态确认，97→108 tests 通过）
+  - [PF-012] 🔄 飞书 AI 员工 Bot 集成 — 启用 OpenClaw 内置飞书 Channel 插件（WebSocket 模式）+ Hooks API <!-- source: user -->
+    - [CR-011] 🔄 飞书 Channel + Hooks API CDK 配置层（in_review）
+  - [PF-013] 🔄 集成验证与 MoS 度量 — 定义并度量成效指标（对话成功率、响应延迟等），验证端到端业务价值 <!-- source: claude -->
+    - [CR-012] 🔄 MoS 指标定义（5 指标 + 6 项验证清单，in_review）
 - [BR-002] 企业级用户管理与安全 <!-- source: claude -->
   - [PF-005] ⏳ 设备配对企业化与 SSO 集成 <!-- source: claude -->
   - [PF-006] ⏳ Gateway OAuth 认证升级 <!-- source: claude -->

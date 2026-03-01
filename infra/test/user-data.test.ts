@@ -131,6 +131,100 @@ describe('buildUserDataCommands', () => {
   test('.env does not include OPENCLAW_MODEL (model configured in openclaw.json)', () => {
     expect(joined).not.toContain('OPENCLAW_MODEL=');
   });
+
+  test('does not include Feishu config when not provided', () => {
+    expect(joined).not.toContain('"feishu"');
+    expect(joined).not.toContain('"channels"');
+  });
+
+  test('does not include hooks config when not provided', () => {
+    expect(joined).not.toContain('"hooks"');
+    expect(joined).not.toContain('hook:ingress');
+  });
+});
+
+describe('buildUserDataCommands with Feishu', () => {
+  const feishuParams = {
+    bedrockRegion: 'us-east-1',
+    bedrockModelId: 'us.anthropic.claude-sonnet-4-6',
+    gatewayToken: 'test-token-123',
+    feishu: {
+      appId: 'cli_test_feishu_app',
+      appSecret: 'test-feishu-secret',
+    },
+  };
+
+  let joined: string;
+
+  beforeAll(() => {
+    joined = buildUserDataCommands(feishuParams).join('\n');
+  });
+
+  test('includes Feishu channel config in openclaw.json', () => {
+    expect(joined).toContain('"channels"');
+    expect(joined).toContain('"feishu"');
+  });
+
+  test('sets Feishu appId and appSecret', () => {
+    expect(joined).toContain('"appId": "cli_test_feishu_app"');
+    expect(joined).toContain('"appSecret": "test-feishu-secret"');
+  });
+
+  test('defaults to websocket connection mode', () => {
+    expect(joined).toContain('"connectionMode": "websocket"');
+  });
+
+  test('enables streaming and pairing by default', () => {
+    expect(joined).toContain('"streaming": true');
+    expect(joined).toContain('"dmPolicy": "pairing"');
+    expect(joined).toContain('"groupPolicy": "allowlist"');
+    expect(joined).toContain('"requireMention": true');
+  });
+
+  test('does not include verificationToken when not set', () => {
+    expect(joined).not.toContain('verificationToken');
+  });
+
+  test('includes verificationToken for webhook mode', () => {
+    const webhookJoined = buildUserDataCommands({
+      ...feishuParams,
+      feishu: {
+        ...feishuParams.feishu,
+        connectionMode: 'webhook' as const,
+        verificationToken: 'test-verify-token',
+      },
+    }).join('\n');
+    expect(webhookJoined).toContain('"connectionMode": "webhook"');
+    expect(webhookJoined).toContain('"verificationToken": "test-verify-token"');
+  });
+
+  test('includes encryptKey when provided', () => {
+    const encryptJoined = buildUserDataCommands({
+      ...feishuParams,
+      feishu: { ...feishuParams.feishu, encryptKey: 'test-encrypt-key' },
+    }).join('\n');
+    expect(encryptJoined).toContain('"encryptKey": "test-encrypt-key"');
+  });
+
+  test('still includes Bedrock provider alongside Feishu config', () => {
+    expect(joined).toContain('"api": "bedrock-converse-stream"');
+    expect(joined).toContain('"amazon-bedrock"');
+  });
+});
+
+describe('buildUserDataCommands with hooks', () => {
+  test('includes hooks config when token provided', () => {
+    const joined = buildUserDataCommands({
+      bedrockRegion: 'us-east-1',
+      bedrockModelId: 'us.anthropic.claude-sonnet-4-6',
+      gatewayToken: 'test-token-123',
+      hooksToken: 'test-hooks-token',
+    }).join('\n');
+    expect(joined).toContain('"hooks"');
+    expect(joined).toContain('"enabled": true');
+    expect(joined).toContain('"token": "test-hooks-token"');
+    expect(joined).toContain('"defaultSessionKey": "hook:ingress"');
+  });
 });
 
 describe('buildAlbCorsCommands', () => {

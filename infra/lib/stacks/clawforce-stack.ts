@@ -9,7 +9,7 @@ import { ClawForceAlb } from '../constructs/alb';
 import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
-import { buildAlbCorsCommands, startOpenClawCommands } from '../constructs/user-data';
+import { buildAlbCorsCommands, startOpenClawCommands, FeishuConfig } from '../constructs/user-data';
 
 /**
  * Token fragment for auto-authentication.
@@ -35,6 +35,10 @@ export interface ClawForceStackProps extends cdk.StackProps {
   readonly certificateArn?: string;
   /** Enable ALB + WAF (default: true) */
   readonly enableAlb?: boolean;
+  /** Feishu channel config — pass to enable Feishu AI employee bot */
+  readonly feishu?: FeishuConfig;
+  /** Enable Hooks API for external webhook integrations (default: true when Feishu enabled) */
+  readonly enableHooks?: boolean;
 }
 
 export class ClawForceStack extends cdk.Stack {
@@ -46,6 +50,20 @@ export class ClawForceStack extends cdk.Stack {
     const bedrockModelId = props.bedrockModelId ?? DEFAULTS.BEDROCK_MODEL_ID;
     const gatewayToken = DEFAULTS.GATEWAY_TOKEN;
     const enableAlb = props.enableAlb ?? true;
+
+    // Feishu integration: read from props or CDK context
+    const feishuAppId =
+      props.feishu?.appId ?? (this.node.tryGetContext('feishuAppId') as string | undefined);
+    const feishuAppSecret =
+      props.feishu?.appSecret ?? (this.node.tryGetContext('feishuAppSecret') as string | undefined);
+    const feishu: FeishuConfig | undefined =
+      feishuAppId && feishuAppSecret
+        ? { appId: feishuAppId, appSecret: feishuAppSecret }
+        : undefined;
+
+    // Hooks API: enabled by default when Feishu is configured
+    const enableHooks = props.enableHooks ?? !!feishu;
+    const hooksToken = enableHooks ? DEFAULTS.HOOKS_TOKEN : undefined;
 
     // Use default VPC (consistent with PoC approach)
     const vpc = ec2.Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true });
@@ -78,6 +96,8 @@ export class ClawForceStack extends cdk.Stack {
       bedrockModelId,
       gatewayToken,
       cloudWatchAgentConfig: monitoring.getAgentConfig(),
+      feishu,
+      hooksToken,
       deferStart: enableAlb,
     });
 

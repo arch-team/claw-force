@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { NagSuppressions } from 'cdk-nag';
-import { buildUserDataCommands, buildUserDataSetupCommands } from './user-data';
+import { buildUserDataCommands, buildUserDataSetupCommands, FeishuConfig } from './user-data';
 import { DEFAULTS } from '../config/constants';
 
 export interface ClawForceComputeProps {
@@ -26,6 +26,10 @@ export interface ClawForceComputeProps {
   readonly gatewayToken: string;
   /** CloudWatch Agent config JSON (injected by monitoring construct) */
   readonly cloudWatchAgentConfig?: string;
+  /** Feishu channel config — omit to disable Feishu integration */
+  readonly feishu?: FeishuConfig;
+  /** Hooks API token — omit to disable hooks endpoint (POST /hooks/agent) */
+  readonly hooksToken?: string;
   /** If true, use setup-only UserData (stack will add start commands after ALB config) */
   readonly deferStart?: boolean;
 }
@@ -63,6 +67,8 @@ export class ClawForceCompute extends Construct {
       bedrockModelId: props.bedrockModelId,
       gatewayToken: props.gatewayToken,
       cloudWatchAgentConfig: props.cloudWatchAgentConfig,
+      feishu: props.feishu,
+      hooksToken: props.hooksToken,
     };
     userData.addCommands(
       ...(props.deferStart

@@ -22,6 +22,20 @@ import { OPENCLAW_PORTS, BEDROCK_PROVIDER_KEY } from '../config/constants';
 /** Path to the assets directory (resolved relative to this file) */
 const ASSETS_DIR = path.resolve(__dirname, '../../assets');
 
+/** Feishu channel configuration for OpenClaw */
+export interface FeishuConfig {
+  /** Feishu App ID from Feishu Open Platform (format: cli_xxx) */
+  readonly appId: string;
+  /** Feishu App Secret */
+  readonly appSecret: string;
+  /** Connection mode: 'websocket' (default, no public URL needed) or 'webhook' */
+  readonly connectionMode?: 'websocket' | 'webhook';
+  /** Verification token (required for webhook mode) */
+  readonly verificationToken?: string;
+  /** Encrypt key for encrypted event payloads (optional) */
+  readonly encryptKey?: string;
+}
+
 export interface UserDataParams {
   /** AWS region for Bedrock */
   readonly bedrockRegion: string;
@@ -31,6 +45,10 @@ export interface UserDataParams {
   readonly gatewayToken: string;
   /** CloudWatch Agent config JSON (optional) */
   readonly cloudWatchAgentConfig?: string;
+  /** Feishu channel config — omit to disable Feishu integration */
+  readonly feishu?: FeishuConfig;
+  /** Hooks API token — omit to disable hooks endpoint (POST /hooks/agent) */
+  readonly hooksToken?: string;
 }
 
 /** Bedrock model presets for OpenClaw provider catalog */
@@ -82,7 +100,7 @@ export function buildUserDataSetupCommands(params: UserDataParams): string[] {
     ...preamble(),
     ...systemSetup(),
     ...dockerInstall(),
-    ...openClawDeploy(params.bedrockRegion, params.bedrockModelId, params.gatewayToken),
+    ...openClawDeploy(params),
     ...ufwFirewall(),
     ...cloudWatchAgent(params.cloudWatchAgentConfig),
   ];
@@ -158,19 +176,23 @@ function dockerInstall(): string[] {
 /**
  * Generate the complete openclaw.json config at CDK synth time.
  *
- * Includes Bedrock provider config (api, auth, models) and agent defaults.
+ * Includes Bedrock provider config (api, auth, models), agent defaults,
+ * and optional Feishu channel + hooks API configuration.
  * The ALB CORS script in clawforce-stack.ts patches allowedOrigins and
  * trustedProxies at deploy time — all other fields are final here.
  */
-function buildOpenClawConfig(
-  bedrockRegion: string,
-  bedrockModelId: string,
-  gatewayToken: string,
-): string {
-  const config = {
+function buildOpenClawConfig(params: {
+  bedrockRegion: string;
+  bedrockModelId: string;
+  gatewayToken: string;
+  feishu?: FeishuConfig;
+  hooksToken?: string;
+}): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const config: Record<string, any> = {
     gateway: {
       mode: 'local',
-      auth: { token: gatewayToken },
+      auth: { token: params.gatewayToken },
       controlUi: {
         // Placeholder — ALB mode overwrites with concrete origin before docker start.
         // Direct mode keeps this; OpenClaw rejects "*" so direct mode uses instance IP.
@@ -181,7 +203,7 @@ function buildOpenClawConfig(
     models: {
       providers: {
         [BEDROCK_PROVIDER_KEY]: {
-          baseUrl: `https://bedrock-runtime.${bedrockRegion}.amazonaws.com`,
+          baseUrl: `https://bedrock-runtime.${params.bedrockRegion}.amazonaws.com`,
           api: 'bedrock-converse-stream',
           auth: 'aws-sdk',
           models: BEDROCK_MODELS,
@@ -191,21 +213,54 @@ function buildOpenClawConfig(
     agents: {
       defaults: {
         model: {
-          primary: `${BEDROCK_PROVIDER_KEY}/${bedrockModelId}`,
+          primary: `${BEDROCK_PROVIDER_KEY}/${params.bedrockModelId}`,
         },
       },
     },
   };
+
+  // Feishu channel (WebSocket mode by default — no public URL needed)
+  if (params.feishu) {
+    const feishuChannel: Record<string, unknown> = {
+      enabled: true,
+      appId: params.feishu.appId,
+      appSecret: params.feishu.appSecret,
+      connectionMode: params.feishu.connectionMode ?? 'websocket',
+      dmPolicy: 'pairing',
+      groupPolicy: 'allowlist',
+      requireMention: true,
+      streaming: true,
+    };
+    if (params.feishu.verificationToken) {
+      feishuChannel.verificationToken = params.feishu.verificationToken;
+    }
+    if (params.feishu.encryptKey) {
+      feishuChannel.encryptKey = params.feishu.encryptKey;
+    }
+    config.channels = { feishu: feishuChannel };
+  }
+
+  // Hooks API for external integrations (POST /hooks/agent)
+  if (params.hooksToken) {
+    config.hooks = {
+      enabled: true,
+      token: params.hooksToken,
+      defaultSessionKey: 'hook:ingress',
+    };
+  }
+
   return JSON.stringify(config, null, 2);
 }
 
-function openClawDeploy(
-  bedrockRegion: string,
-  bedrockModelId: string,
-  gatewayToken: string,
-): string[] {
+function openClawDeploy(params: UserDataParams): string[] {
   const composeContent = fs.readFileSync(path.join(ASSETS_DIR, 'docker-compose.yml'), 'utf-8');
-  const configJson = buildOpenClawConfig(bedrockRegion, bedrockModelId, gatewayToken);
+  const configJson = buildOpenClawConfig({
+    bedrockRegion: params.bedrockRegion,
+    bedrockModelId: params.bedrockModelId,
+    gatewayToken: params.gatewayToken,
+    feishu: params.feishu,
+    hooksToken: params.hooksToken,
+  });
 
   return [
     '# === OpenClaw Deployment (build from source) ===',
@@ -230,9 +285,9 @@ function openClawDeploy(
     '',
     '# Write .env with deployment-specific values',
     `cat > /home/ubuntu/openclaw/.env << ENV`,
-    `AWS_REGION=${bedrockRegion}`,
-    `AWS_DEFAULT_REGION=${bedrockRegion}`,
-    `OPENCLAW_GATEWAY_TOKEN=${gatewayToken}`,
+    `AWS_REGION=${params.bedrockRegion}`,
+    `AWS_DEFAULT_REGION=${params.bedrockRegion}`,
+    `OPENCLAW_GATEWAY_TOKEN=${params.gatewayToken}`,
     'ENV',
     '',
     '# Set ownership and restrict .env permissions',

@@ -26,4 +26,9 @@ export const DEFAULTS = {
    * prevents accidental unauthenticated access if SG rules are relaxed.
    */
   GATEWAY_TOKEN: 'clawforce-gateway-2026',
+  /**
+   * Hooks API token — shared secret for external webhook integrations
+   * (POST /hooks/agent). Separate from gateway token for least-privilege.
+   */
+  HOOKS_TOKEN: 'clawforce-hooks-2026',
 } as const;
