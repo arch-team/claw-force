@@ -35,7 +35,7 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('docker build -t openclaw:local');
   });
 
-  test('injects bedrockRegion into .env file', () => {
+  test('injects bedrockRegion into .env and Bedrock baseUrl', () => {
     const commands = buildUserDataCommands({
       ...defaultParams,
       bedrockRegion: 'ap-northeast-1',
@@ -43,17 +43,39 @@ describe('buildUserDataCommands', () => {
     const joined = commands.join('\n');
     expect(joined).toContain('AWS_REGION=ap-northeast-1');
     expect(joined).toContain('AWS_DEFAULT_REGION=ap-northeast-1');
+    expect(joined).toContain('bedrock-runtime.ap-northeast-1.amazonaws.com');
   });
 
-  test('injects bedrockModelId into .env file with amazon-bedrock/ prefix', () => {
+  test('generates Bedrock provider config in openclaw.json', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('"api": "bedrock-converse-stream"');
+    expect(joined).toContain('"auth": "aws-sdk"');
+    expect(joined).toContain('"amazon-bedrock"');
+    expect(joined).toContain('bedrock-runtime.us-east-1.amazonaws.com');
+  });
+
+  test('includes inference profile model IDs in Bedrock provider', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('us.anthropic.claude-sonnet-4-6');
+    expect(joined).toContain('us.anthropic.claude-opus-4-6-v1');
+    expect(joined).toContain('us.anthropic.claude-haiku-4-5-20251001-v1:0');
+  });
+
+  test('sets agent default model to amazon-bedrock/ inference profile', () => {
+    const commands = buildUserDataCommands(defaultParams);
+    const joined = commands.join('\n');
+    expect(joined).toContain('"primary": "amazon-bedrock/us.anthropic.claude-sonnet-4-6"');
+  });
+
+  test('uses custom bedrockModelId for agent default model', () => {
     const commands = buildUserDataCommands({
       ...defaultParams,
-      bedrockModelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+      bedrockModelId: 'us.anthropic.claude-opus-4-6-v1',
     });
     const joined = commands.join('\n');
-    expect(joined).toContain(
-      'OPENCLAW_MODEL=amazon-bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0',
-    );
+    expect(joined).toContain('"primary": "amazon-bedrock/us.anthropic.claude-opus-4-6-v1"');
   });
 
   test('includes UFW firewall rules for SSH and Gateway', () => {
@@ -95,10 +117,11 @@ describe('buildUserDataCommands', () => {
     expect(last).toContain('ClawForce OpenClaw setup complete');
   });
 
-  test('injects gateway token into .env via OPENCLAW_GATEWAY_TOKEN', () => {
+  test('injects gateway token into .env and openclaw.json', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
     expect(joined).toContain('OPENCLAW_GATEWAY_TOKEN=test-token-123');
+    expect(joined).toContain('"token": "test-token-123"');
   });
 
   test('creates OpenClaw config with gateway mode local', () => {
@@ -122,12 +145,6 @@ describe('buildUserDataCommands', () => {
     expect(joined).not.toContain('envsubst');
   });
 
-  test('openclaw.json does not include invalid models.providers section', () => {
-    const commands = buildUserDataCommands(defaultParams);
-    const joined = commands.join('\n');
-    expect(joined).not.toContain('"amazon-bedrock"');
-  });
-
   test('writes .env file with deployment values', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
@@ -135,9 +152,9 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('AWS_REGION=us-east-1');
   });
 
-  test('installs gettext-base for envsubst', () => {
+  test('.env does not include OPENCLAW_MODEL (model configured in openclaw.json)', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).toContain('gettext-base');
+    expect(joined).not.toContain('OPENCLAW_MODEL=');
   });
 });

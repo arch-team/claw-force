@@ -7,9 +7,9 @@ import * as path from 'path';
  * Generates the shell commands for instance bootstrap, separated into
  * logical sections for readability and testability.
  *
- * Docker deployment files are read from infra/assets/ at CDK synth time:
- * - assets/docker-compose.yml  (uses ${VAR} with .env file)
- * - assets/openclaw.json       (static config, no envsubst needed)
+ * Docker deployment files:
+ * - assets/docker-compose.yml  (read at CDK synth time, uses ${VAR} with .env file)
+ * - openclaw.json              (generated dynamically with Bedrock provider config)
  *
  * PoC lessons applied:
  * - Ubuntu 24.04 uses ssh.service not sshd.service (#2)
@@ -24,13 +24,40 @@ const ASSETS_DIR = path.resolve(__dirname, '../../assets');
 export interface UserDataParams {
   /** AWS region for Bedrock */
   bedrockRegion: string;
-  /** Bedrock model ID in Inference Profile format */
+  /** Bedrock model ID in Inference Profile format (e.g. us.anthropic.claude-sonnet-4-6) */
   bedrockModelId: string;
   /** Gateway auth token (required by OpenClaw for --bind lan) */
   gatewayToken: string;
   /** CloudWatch Agent config JSON (optional) */
   cloudWatchAgentConfig?: string;
 }
+
+/** Bedrock model presets for OpenClaw provider catalog */
+const BEDROCK_MODELS = [
+  {
+    id: 'us.anthropic.claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6 (Bedrock)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 200000,
+    maxTokens: 8192,
+  },
+  {
+    id: 'us.anthropic.claude-opus-4-6-v1',
+    name: 'Claude Opus 4.6 (Bedrock)',
+    reasoning: true,
+    input: ['text', 'image'],
+    contextWindow: 200000,
+    maxTokens: 8192,
+  },
+  {
+    id: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+    name: 'Claude Haiku 4.5 (Bedrock)',
+    input: ['text', 'image'],
+    contextWindow: 200000,
+    maxTokens: 8192,
+  },
+];
 
 /** Build the complete UserData command list */
 export function buildUserDataCommands(params: UserDataParams): string[] {
@@ -108,13 +135,57 @@ function readAsset(filename: string): string {
   return fs.readFileSync(path.join(ASSETS_DIR, filename), 'utf-8');
 }
 
+/**
+ * Generate the complete openclaw.json config at CDK synth time.
+ *
+ * Includes Bedrock provider config (api, auth, models) and agent defaults.
+ * The ALB CORS script in clawforce-stack.ts patches allowedOrigins and
+ * trustedProxies at deploy time — all other fields are final here.
+ */
+function buildOpenClawConfig(
+  bedrockRegion: string,
+  bedrockModelId: string,
+  gatewayToken: string,
+): string {
+  const config = {
+    gateway: {
+      mode: 'local',
+      auth: { token: gatewayToken },
+      controlUi: {
+        // Placeholder — ALB mode overwrites with concrete origin before docker start.
+        // Direct mode keeps this; OpenClaw rejects "*" so direct mode uses instance IP.
+        allowedOrigins: ['*'],
+        dangerouslyDisableDeviceAuth: true,
+      },
+    },
+    models: {
+      providers: {
+        'amazon-bedrock': {
+          baseUrl: `https://bedrock-runtime.${bedrockRegion}.amazonaws.com`,
+          api: 'bedrock-converse-stream',
+          auth: 'aws-sdk',
+          models: BEDROCK_MODELS,
+        },
+      },
+    },
+    agents: {
+      defaults: {
+        model: {
+          primary: `amazon-bedrock/${bedrockModelId}`,
+        },
+      },
+    },
+  };
+  return JSON.stringify(config, null, 2);
+}
+
 function openClawDeploy(
   bedrockRegion: string,
   bedrockModelId: string,
   gatewayToken: string,
 ): string[] {
   const composeContent = readAsset('docker-compose.yml');
-  const configContent = readAsset('openclaw.json');
+  const configJson = buildOpenClawConfig(bedrockRegion, bedrockModelId, gatewayToken);
 
   return [
     '# === OpenClaw Deployment (build from source) ===',
@@ -127,9 +198,9 @@ function openClawDeploy(
     '# Create deployment directory',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
     '',
-    '# Write OpenClaw config (auth via OPENCLAW_GATEWAY_TOKEN env var in .env)',
+    '# Write OpenClaw config with Bedrock provider (api: bedrock-converse-stream, auth: aws-sdk)',
     `cat > /home/ubuntu/openclaw/config/openclaw.json << 'OCCONFIG'`,
-    configContent.trim(),
+    configJson,
     'OCCONFIG',
     '',
     '# Write docker-compose.yml',
@@ -137,13 +208,10 @@ function openClawDeploy(
     composeContent.trim(),
     'COMPOSE',
     '',
-    `# Write .env with deployment-specific values (PoC fix #10/#5)`,
-    `# CR-009 fix: Model ID must use amazon-bedrock/ prefix so OpenClaw routes to`,
-    `# Bedrock provider (IAM auth via IMDS) instead of direct Anthropic API (API key).`,
+    '# Write .env with deployment-specific values',
     `cat > /home/ubuntu/openclaw/.env << ENV`,
     `AWS_REGION=${bedrockRegion}`,
     `AWS_DEFAULT_REGION=${bedrockRegion}`,
-    `OPENCLAW_MODEL=amazon-bedrock/${bedrockModelId}`,
     `OPENCLAW_GATEWAY_TOKEN=${gatewayToken}`,
     'ENV',
     '',
@@ -151,7 +219,6 @@ function openClawDeploy(
     'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
     'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     'chmod 600 /home/ubuntu/openclaw/.env',
-    '',
     '',
   ];
 }
