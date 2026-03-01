@@ -9,7 +9,7 @@ import * as path from 'path';
  *
  * Docker deployment files are read from infra/assets/ at CDK synth time:
  * - assets/docker-compose.yml  (uses ${VAR} with .env file)
- * - assets/openclaw.json       (uses ${GATEWAY_TOKEN} via envsubst)
+ * - assets/openclaw.json       (static config, no envsubst needed)
  *
  * PoC lessons applied:
  * - Ubuntu 24.04 uses ssh.service not sshd.service (#2)
@@ -26,6 +26,8 @@ export interface UserDataParams {
   bedrockRegion: string;
   /** Bedrock model ID in Inference Profile format */
   bedrockModelId: string;
+  /** Gateway auth token (required by OpenClaw for --bind lan) */
+  gatewayToken: string;
   /** CloudWatch Agent config JSON (optional) */
   cloudWatchAgentConfig?: string;
 }
@@ -36,7 +38,7 @@ export function buildUserDataCommands(params: UserDataParams): string[] {
     ...preamble(),
     ...systemSetup(),
     ...dockerInstall(),
-    ...openClawDeploy(params.bedrockRegion, params.bedrockModelId),
+    ...openClawDeploy(params.bedrockRegion, params.bedrockModelId, params.gatewayToken),
     ...ufwFirewall(),
     ...startOpenClaw(),
     ...cloudWatchAgent(params.cloudWatchAgentConfig),
@@ -89,7 +91,7 @@ function readAsset(filename: string): string {
   return fs.readFileSync(path.join(ASSETS_DIR, filename), 'utf-8');
 }
 
-function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[] {
+function openClawDeploy(bedrockRegion: string, bedrockModelId: string, gatewayToken: string): string[] {
   const composeContent = readAsset('docker-compose.yml');
   const configContent = readAsset('openclaw.json');
 
@@ -104,15 +106,10 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     '# Create deployment directory',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace',
     '',
-    '# Generate gateway token',
-    'export GATEWAY_TOKEN=$(openssl rand -hex 32)',
-    '',
-    '# Write OpenClaw config (envsubst replaces $GATEWAY_TOKEN)',
-    `cat > /tmp/openclaw.json.tpl << 'OCCONFIG'`,
+    '# Write OpenClaw config (auth via OPENCLAW_GATEWAY_TOKEN env var in .env)',
+    `cat > /home/ubuntu/openclaw/config/openclaw.json << 'OCCONFIG'`,
     configContent.trim(),
     'OCCONFIG',
-    'envsubst < /tmp/openclaw.json.tpl > /home/ubuntu/openclaw/config/openclaw.json',
-    'rm /tmp/openclaw.json.tpl',
     '',
     '# Write docker-compose.yml',
     `cat > /home/ubuntu/openclaw/docker-compose.yml << 'COMPOSE'`,
@@ -124,6 +121,7 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     `AWS_REGION=${bedrockRegion}`,
     `AWS_DEFAULT_REGION=${bedrockRegion}`,
     `OPENCLAW_MODEL=${bedrockModelId}`,
+    `OPENCLAW_GATEWAY_TOKEN=${gatewayToken}`,
     'ENV',
     '',
     '# Set ownership and restrict .env permissions',
@@ -131,10 +129,6 @@ function openClawDeploy(bedrockRegion: string, bedrockModelId: string): string[]
     'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     'chmod 600 /home/ubuntu/openclaw/.env',
     '',
-    '# Save gateway token for reference',
-    'echo "${GATEWAY_TOKEN}" > /home/ubuntu/openclaw/.gateway-token',
-    'chown ubuntu:ubuntu /home/ubuntu/openclaw/.gateway-token',
-    'chmod 600 /home/ubuntu/openclaw/.gateway-token',
     '',
   ];
 }
@@ -146,8 +140,6 @@ function ufwFirewall(): string[] {
     'sed -i \'s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/\' /etc/default/ufw',
     'ufw allow 22/tcp',
     'ufw allow 18789/tcp',
-    'ufw allow 18790/tcp',
-    'ufw allow 18791/tcp',
     'ufw --force enable',
     '',
   ];

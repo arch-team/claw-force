@@ -19,11 +19,11 @@ export interface ClawForceAlbProps {
 /**
  * Application Load Balancer construct for ClawForce.
  *
- * Provides a single ALB entry point for all OpenClaw services:
- * - /          -> Control UI (port 18790)
+ * Provides a single ALB entry point for OpenClaw services:
+ * - /          -> Control UI (served on Gateway port 18789)
  * - /ws        -> Gateway WebSocket (port 18789)
- * - /browser   -> Browser Control (port 18791)
  *
+ * Note: Browser service (18791) binds to 127.0.0.1 and is not ALB-routable.
  * When certificateArn is provided, enables HTTPS with HTTP->HTTPS redirect.
  */
 export class ClawForceAlb extends Construct {
@@ -60,20 +60,7 @@ export class ClawForceAlb extends Construct {
       loadBalancerName: 'ClawForce-ALB',
     });
 
-    // Target Groups for each OpenClaw service
-    const controlUiTarget = new elbv2.ApplicationTargetGroup(this, 'ControlUiTG', {
-      vpc: props.vpc,
-      port: OPENCLAW_PORTS.CONTROL_UI,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new targets.InstanceTarget(props.instance, OPENCLAW_PORTS.CONTROL_UI)],
-      healthCheck: {
-        path: '/',
-        port: String(OPENCLAW_PORTS.CONTROL_UI),
-        healthyHttpCodes: '200-399',
-      },
-      targetGroupName: 'ClawForce-ControlUI',
-    });
-
+    // Single Target Group — OpenClaw serves Gateway + Control UI on the same port
     const gatewayTarget = new elbv2.ApplicationTargetGroup(this, 'GatewayTG', {
       vpc: props.vpc,
       port: OPENCLAW_PORTS.GATEWAY,
@@ -88,19 +75,6 @@ export class ClawForceAlb extends Construct {
       stickinessCookieDuration: cdk.Duration.days(1),
     });
 
-    const browserTarget = new elbv2.ApplicationTargetGroup(this, 'BrowserTG', {
-      vpc: props.vpc,
-      port: OPENCLAW_PORTS.BROWSER,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targets: [new targets.InstanceTarget(props.instance, OPENCLAW_PORTS.BROWSER)],
-      healthCheck: {
-        path: '/',
-        port: String(OPENCLAW_PORTS.BROWSER),
-        healthyHttpCodes: '200-399',
-      },
-      targetGroupName: 'ClawForce-Browser',
-    });
-
     if (props.certificateArn) {
       // HTTPS mode: 443 listener + HTTP->HTTPS redirect
       const certificate = acm.Certificate.fromCertificateArn(
@@ -109,24 +83,11 @@ export class ClawForceAlb extends Construct {
         props.certificateArn,
       );
 
-      const httpsListener = this.alb.addListener('HttpsListener', {
+      this.alb.addListener('HttpsListener', {
         port: 443,
         protocol: elbv2.ApplicationProtocol.HTTPS,
         certificates: [certificate],
-        defaultTargetGroups: [controlUiTarget],
-      });
-
-      // Path-based routing for WebSocket and Browser
-      httpsListener.addTargetGroups('GatewayRule', {
-        priority: 10,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/ws', '/ws/*'])],
-        targetGroups: [gatewayTarget],
-      });
-
-      httpsListener.addTargetGroups('BrowserRule', {
-        priority: 20,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/browser', '/browser/*'])],
-        targetGroups: [browserTarget],
+        defaultTargetGroups: [gatewayTarget],
       });
 
       // HTTP -> HTTPS redirect
@@ -140,23 +101,11 @@ export class ClawForceAlb extends Construct {
         }),
       });
     } else {
-      // HTTP-only mode: direct routing on port 80
-      const httpListener = this.alb.addListener('HttpListener', {
+      // HTTP-only mode: all traffic to Gateway (serves Control UI + WebSocket)
+      this.alb.addListener('HttpListener', {
         port: 80,
         protocol: elbv2.ApplicationProtocol.HTTP,
-        defaultTargetGroups: [controlUiTarget],
-      });
-
-      httpListener.addTargetGroups('GatewayRule', {
-        priority: 10,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/ws', '/ws/*'])],
-        targetGroups: [gatewayTarget],
-      });
-
-      httpListener.addTargetGroups('BrowserRule', {
-        priority: 20,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/browser', '/browser/*'])],
-        targetGroups: [browserTarget],
+        defaultTargetGroups: [gatewayTarget],
       });
     }
 

@@ -4,6 +4,7 @@ describe('buildUserDataCommands', () => {
   const defaultParams = {
     bedrockRegion: 'us-east-1',
     bedrockModelId: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+    gatewayToken: 'test-token-123',
   };
 
   test('starts with bash shebang and error handling', () => {
@@ -53,13 +54,13 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('OPENCLAW_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0');
   });
 
-  test('includes UFW firewall rules for all ports', () => {
+  test('includes UFW firewall rules for SSH and Gateway', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
     expect(joined).toContain('ufw allow 22/tcp');
     expect(joined).toContain('ufw allow 18789/tcp');
-    expect(joined).toContain('ufw allow 18790/tcp');
-    expect(joined).toContain('ufw allow 18791/tcp');
+    expect(joined).not.toContain('ufw allow 18790/tcp');
+    expect(joined).not.toContain('ufw allow 18791/tcp');
   });
 
   test('includes CloudWatch Agent install', () => {
@@ -92,10 +93,10 @@ describe('buildUserDataCommands', () => {
     expect(last).toContain('ClawForce OpenClaw setup complete');
   });
 
-  test('generates gateway token with openssl', () => {
+  test('injects gateway token into .env via OPENCLAW_GATEWAY_TOKEN', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).toContain('GATEWAY_TOKEN=$(openssl rand -hex 32)');
+    expect(joined).toContain('OPENCLAW_GATEWAY_TOKEN=test-token-123');
   });
 
   test('creates OpenClaw config with gateway mode local', () => {
@@ -111,11 +112,12 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('${AWS_REGION}');
   });
 
-  test('reads openclaw.json from assets directory', () => {
+  test('writes openclaw.json config directly (no envsubst needed)', () => {
     const commands = buildUserDataCommands(defaultParams);
     const joined = commands.join('\n');
-    expect(joined).toContain('${GATEWAY_TOKEN}');
-    expect(joined).toContain('envsubst');
+    expect(joined).toContain('openclaw.json');
+    expect(joined).toContain('"mode": "local"');
+    expect(joined).not.toContain('envsubst');
   });
 
   test('writes .env file with deployment values', () => {

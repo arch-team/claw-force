@@ -10,6 +10,9 @@ import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
 
+/** Token fragment appended to dashboard URLs for auto-authentication */
+const TOKEN_HASH = `#token=${DEFAULTS.GATEWAY_TOKEN}`;
+
 export interface ClawForceStackProps extends cdk.StackProps {
   /** CIDR range allowed for SSH and management access */
   allowedCidr?: string;
@@ -81,49 +84,50 @@ export class ClawForceStack extends cdk.Stack {
         certificateArn: props.certificateArn,
       });
 
-      // Add ALB->EC2 ingress rules to the instance SG
+      // Add ALB->EC2 ingress rule for Gateway port (serves both Gateway + Control UI)
       networking.securityGroup.addIngressRule(
         ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
         ec2.Port.tcp(OPENCLAW_PORTS.GATEWAY),
-        'OpenClaw Gateway from ALB',
-      );
-
-      networking.securityGroup.addIngressRule(
-        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(OPENCLAW_PORTS.CONTROL_UI),
-        'OpenClaw Control UI from ALB',
-      );
-
-      networking.securityGroup.addIngressRule(
-        ec2.Peer.securityGroupId(albConstruct.albSecurityGroup.securityGroupId),
-        ec2.Port.tcp(OPENCLAW_PORTS.BROWSER),
-        'OpenClaw Browser from ALB',
+        'OpenClaw Gateway + Control UI from ALB',
       );
 
       // WAF: WebACL + AWS Managed Rules -> ALB
       new ClawForceWaf(this, 'Waf', {
         albArn: albConstruct.alb.loadBalancerArn,
       });
+
+      // Configure Gateway for ALB mode (CR-008):
+      // 1. CORS: inject concrete ALB DNS (wildcard "*" not supported)
+      // 2. Trusted Proxies: ALB internal IP so OpenClaw treats proxied requests as local
+      // These commands run after docker compose up, then restart the container.
+      const albDns = albConstruct.alb.loadBalancerDnsName;
+      const protocol = props.certificateArn ? 'https' : 'http';
+      compute.instance.userData.addCommands(
+        '# === Configure Gateway for ALB mode (CR-008) ===',
+        `export ALB_ORIGIN="${protocol}://${albDns}"`,
+        `export VPC_CIDR=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)`,
+        'python3 << \'PYEOF\'',
+        'import json, os',
+        'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
+        'with open(cfg_path) as f:',
+        '    cfg = json.load(f)',
+        'cfg["gateway"]["controlUi"]["allowedOrigins"] = [os.environ["ALB_ORIGIN"]]',
+        'cfg["gateway"]["trustedProxies"] = [os.environ.get("VPC_CIDR", "172.31.0.0/16")]',
+        'with open(cfg_path, "w") as f:',
+        '    json.dump(cfg, f, indent=2)',
+        'PYEOF',
+        '# Restart Gateway to apply ALB configuration',
+        'su - ubuntu -c "cd ~/openclaw && docker compose restart"',
+        '',
+      );
     } else {
-      // Direct mode: OpenClaw ports from allowed CIDR (backward compatible with CR-001)
+      // Direct mode: Gateway port from allowed CIDR (serves both Gateway + Control UI)
       const peer = ec2.Peer.ipv4(allowedCidr);
 
       networking.securityGroup.addIngressRule(
         peer,
         ec2.Port.tcp(OPENCLAW_PORTS.GATEWAY),
-        'OpenClaw Gateway WebSocket',
-      );
-
-      networking.securityGroup.addIngressRule(
-        peer,
-        ec2.Port.tcp(OPENCLAW_PORTS.CONTROL_UI),
-        'OpenClaw Control UI',
-      );
-
-      networking.securityGroup.addIngressRule(
-        peer,
-        ec2.Port.tcp(OPENCLAW_PORTS.BROWSER),
-        'OpenClaw Browser Control Server',
+        'OpenClaw Gateway + Control UI',
       );
     }
 
@@ -161,8 +165,8 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}`,
-        description: 'OpenClaw Control UI URL (via ALB)',
+        value: `${protocol}://${albConstruct.alb.loadBalancerDnsName}/${TOKEN_HASH}`,
+        description: 'OpenClaw Control UI URL (via ALB, auto-authenticated)',
       });
 
       new cdk.CfnOutput(this, 'GatewayUrl', {
@@ -176,8 +180,8 @@ export class ClawForceStack extends cdk.Stack {
       });
 
       new cdk.CfnOutput(this, 'ControlUiUrl', {
-        value: `http://${compute.instance.instancePublicIp}:18790`,
-        description: 'OpenClaw Control UI URL',
+        value: `http://${compute.instance.instancePublicIp}:${OPENCLAW_PORTS.GATEWAY}/${TOKEN_HASH}`,
+        description: 'OpenClaw Control UI URL (auto-authenticated)',
       });
     }
   }

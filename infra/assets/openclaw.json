@@ -1,7 +1,10 @@
 {
   "gateway": {
     "mode": "local",
-    "auth": { "token": "${GATEWAY_TOKEN}" },
-    "controlUi": { "allowedOrigins": ["*"] }
+    "auth": { "token": "clawforce-gateway-2026" },
+    "controlUi": {
+      "allowedOrigins": ["*"],
+      "dangerouslyDisableDeviceAuth": true
+    }
   }
 }

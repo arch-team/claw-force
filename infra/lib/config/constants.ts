@@ -1,9 +1,16 @@
 import * as cdk from 'aws-cdk-lib/core';
 
-/** OpenClaw service port definitions */
+/**
+ * OpenClaw service port definitions.
+ *
+ * Note: OpenClaw consolidates Control UI into the Gateway port (18789).
+ * Browser service binds to 127.0.0.1:18791 (loopback only, not ALB-routable).
+ */
 export const OPENCLAW_PORTS = {
   GATEWAY: 18789,
-  CONTROL_UI: 18790,
+  /** Control UI is served on the Gateway port (OpenClaw consolidated since v1.x) */
+  CONTROL_UI: 18789,
+  /** Browser binds to 127.0.0.1 only — not routable from ALB */
   BROWSER: 18791,
 } as const;
 
@@ -15,6 +22,12 @@ export const DEFAULTS = {
   BEDROCK_MODEL_ID: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
   LOG_RETENTION_DAYS: 30,
   ALLOWED_CIDR: '0.0.0.0/0',
+  /**
+   * Gateway auth token — required by OpenClaw when binding to LAN.
+   * Security is enforced at infra layer (ALB + WAF + SG); this token
+   * prevents accidental unauthenticated access if SG rules are relaxed.
+   */
+  GATEWAY_TOKEN: 'clawforce-gateway-2026',
 } as const;
 
 /** Required resource tags for cost tracking */
