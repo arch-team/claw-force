@@ -96,27 +96,27 @@ export class ClawForceStack extends cdk.Stack {
         albArn: albConstruct.alb.loadBalancerArn,
       });
 
-      // Configure Gateway CORS to allow ALB origin (CR-008)
-      // OpenClaw validates controlUi.allowedOrigins against the request origin;
-      // wildcard "*" is not supported, so we inject the concrete ALB DNS.
-      // These commands run after docker compose up (appended to user-data),
-      // then restart the container to pick up the updated config.
+      // Configure Gateway for ALB mode (CR-008):
+      // 1. CORS: inject concrete ALB DNS (wildcard "*" not supported)
+      // 2. Trusted Proxies: ALB internal IP so OpenClaw treats proxied requests as local
+      // These commands run after docker compose up, then restart the container.
       const albDns = albConstruct.alb.loadBalancerDnsName;
       const protocol = props.certificateArn ? 'https' : 'http';
       compute.instance.userData.addCommands(
-        '# === Configure Gateway CORS for ALB (CR-008) ===',
+        '# === Configure Gateway for ALB mode (CR-008) ===',
         `export ALB_ORIGIN="${protocol}://${albDns}"`,
+        `export VPC_CIDR=$(curl -s http://169.254.169.254/latest/meta-data/network/interfaces/macs/$(curl -s http://169.254.169.254/latest/meta-data/mac)/vpc-ipv4-cidr-block)`,
         'python3 << \'PYEOF\'',
         'import json, os',
         'cfg_path = "/home/ubuntu/openclaw/config/openclaw.json"',
         'with open(cfg_path) as f:',
         '    cfg = json.load(f)',
-        'origin = os.environ["ALB_ORIGIN"]',
-        'cfg["gateway"]["controlUi"]["allowedOrigins"] = [origin]',
+        'cfg["gateway"]["controlUi"]["allowedOrigins"] = [os.environ["ALB_ORIGIN"]]',
+        'cfg["gateway"]["trustedProxies"] = [os.environ.get("VPC_CIDR", "172.31.0.0/16")]',
         'with open(cfg_path, "w") as f:',
         '    json.dump(cfg, f, indent=2)',
         'PYEOF',
-        '# Restart Gateway to apply CORS configuration',
+        '# Restart Gateway to apply ALB configuration',
         'su - ubuntu -c "cd ~/openclaw && docker compose restart"',
         '',
       );
