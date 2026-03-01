@@ -32,14 +32,19 @@ export class ClawForceIam extends Construct {
     });
 
     // Bedrock InvokeModel permission
-    // PoC lesson: Must include both model/* AND inference-profile/* ARNs
+    // Cross-region inference profiles (us.anthropic.claude-*) route requests to
+    // ANY US region (us-east-1, us-east-2, us-west-2, etc.). IAM must allow
+    // foundation-model/* in ALL regions, not just the configured one.
     this.role.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
         resources: [
-          `arn:aws:bedrock:${region}::foundation-model/*`,
+          // foundation-model: any region (cross-region profile routes unpredictably)
+          'arn:aws:bedrock:*::foundation-model/*',
+          // inference-profile: single-region (configured region)
           `arn:aws:bedrock:${region}:${cdk.Aws.ACCOUNT_ID}:inference-profile/*`,
+          // inference-profile: cross-region (us.* prefix)
           `arn:aws:bedrock:us:${cdk.Aws.ACCOUNT_ID}:inference-profile/*`,
         ],
       }),

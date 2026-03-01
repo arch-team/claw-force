@@ -42,7 +42,7 @@ describe('ClawForceIam', () => {
         Statement: Match.arrayWith([
           Match.objectLike({
             Action: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-            Resource: Match.arrayWith(['arn:aws:bedrock:us-east-1::foundation-model/*']),
+            Resource: Match.arrayWith(['arn:aws:bedrock:*::foundation-model/*']),
           }),
         ]),
       }),
