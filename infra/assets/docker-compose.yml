@@ -20,6 +20,7 @@ services:
     volumes:
       - ./config:/home/node/.openclaw
       - ./workspace:/home/node/.openclaw/workspace
+      - ./logs:/tmp/openclaw
     ports:
       - "18789:18789"
     init: true

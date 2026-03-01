@@ -102,12 +102,13 @@ describe('ClawForceMonitoring', () => {
       expect(config).toHaveProperty('metrics');
     });
 
-    test('configures setup log collection', () => {
+    test('configures setup and app log collection', () => {
       const collectList = config.logs.logs_collected.files.collect_list;
-      expect(collectList).toHaveLength(1);
+      expect(collectList).toHaveLength(2);
       expect(collectList[0].file_path).toBe('/var/log/clawforce-setup.log');
-      // log_group_name is a CDK Token reference, verify it exists
       expect(collectList[0]).toHaveProperty('log_group_name');
+      expect(collectList[1].file_path).toBe('/home/ubuntu/openclaw/logs/openclaw-*.log');
+      expect(collectList[1]).toHaveProperty('log_group_name');
     });
 
     test('configures disk and memory metrics', () => {

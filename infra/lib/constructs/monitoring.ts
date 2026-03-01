@@ -92,6 +92,11 @@ export class ClawForceMonitoring extends Construct {
                   log_group_name: this.setupLogGroup.logGroupName,
                   log_stream_name: '{instance_id}/setup',
                 },
+                {
+                  file_path: '/home/ubuntu/openclaw/logs/openclaw-*.log',
+                  log_group_name: this.appLogGroup.logGroupName,
+                  log_stream_name: '{instance_id}/app',
+                },
               ],
             },
           },
