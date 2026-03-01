@@ -3,7 +3,7 @@ import { buildUserDataCommands } from '../lib/constructs/user-data';
 describe('buildUserDataCommands', () => {
   const defaultParams = {
     bedrockRegion: 'us-east-1',
-    bedrockModelId: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+    bedrockModelId: 'us.anthropic.claude-sonnet-4-6',
     gatewayToken: 'test-token-123',
   };
 
