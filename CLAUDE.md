@@ -75,6 +75,50 @@ pnpm cdk destroy --force     # 销毁（UserData 变更必须 destroy+deploy）
 | IMDSv2 | hop limit ≥ 2（Docker 容器）；必须先 PUT 获取 token 再 GET |
 | EFS 数据持久化 | EFS 用 `RETAIN` 策略；首次部署后将 EFS ID 保存到 `cdk.json` 的 `efsFileSystemId` |
 
-# Git 规则
+# Git 与分支策略
 
-- `git push` 必须加 `--no-verify`（Code Defender pre-push hook 拦截外部仓库）
+## 分支模型：GitHub Flow + Release Branches
+
+```
+main (protected)              ← 始终可部署，仅接受 PR
+  ├── feat/session-persist    ← 功能分支
+  ├── fix/cors-drift          ← 修复分支
+  └── release/v0.3.0          ← 发布分支（稳定后打 tag）
+```
+
+## 分支命名
+
+| 前缀 | 用途 | 示例 |
+|------|------|------|
+| `feat/` | 新功能 | `feat/efs-persistence` |
+| `fix/` | Bug 修复 | `fix/cors-drift` |
+| `hotfix/` | 紧急线上修复 | `hotfix/bedrock-auth` |
+| `refactor/` | 重构 | `refactor/userdata-phases` |
+| `docs/` | 文档 | `docs/contributing` |
+| `chore/` | 构建/CI/依赖 | `chore/ci-workflow` |
+| `release/` | 发布准备 | `release/v0.3.0` |
+
+## 规则
+
+- **所有变更通过 PR** 合并到 main（禁止直接 push）
+- **Squash merge** 保持 main 历史线性
+- **Conventional Commits**：`type(scope): description`
+- **CI 必须通过**：typecheck + lint + format + test + cdk synth
+- **`git push` 加 `--no-verify`**（Code Defender pre-push hook 拦截外部仓库）
+
+## 发布流程
+
+```
+main 功能积累 → git checkout -b release/vX.Y.Z
+→ 仅接受 cherry-pick bug fix → 稳定后 git tag vX.Y.Z
+→ gh release create → 删除 release 分支
+```
+
+## DevPace 集成
+
+| DevPace 事件 | Git 操作 |
+|-------------|---------|
+| CR created | `git checkout -b feat/xxx` 或 `fix/xxx` |
+| CR in_review | `gh pr create` |
+| CR merged | Squash merge → main |
+| REL closed | `git tag vX.Y.Z` + `gh release create` |
