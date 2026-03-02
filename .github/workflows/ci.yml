@@ -77,6 +77,5 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm cdk synth
         env:
-          # Must match cdk.context.json cache keys for offline VPC/AMI lookup
           CDK_DEFAULT_ACCOUNT: '000000000000'
           CDK_DEFAULT_REGION: us-west-2
