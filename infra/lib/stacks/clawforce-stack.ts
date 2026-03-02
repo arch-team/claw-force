@@ -8,6 +8,7 @@ import { ClawForceCompute } from '../constructs/compute';
 import { ClawForceAlb } from '../constructs/alb';
 import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
+import { ClawForceEfs } from '../constructs/efs';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
 import { buildAlbCorsCommands, startOpenClawCommands, FeishuConfig } from '../constructs/user-data';
 
@@ -39,6 +40,8 @@ export interface ClawForceStackProps extends cdk.StackProps {
   readonly feishu?: FeishuConfig;
   /** Enable Hooks API for external webhook integrations (default: true when Feishu enabled) */
   readonly enableHooks?: boolean;
+  /** Existing EFS filesystem ID to reuse for data persistence */
+  readonly efsFileSystemId?: string;
 }
 
 export class ClawForceStack extends cdk.Stack {
@@ -82,6 +85,19 @@ export class ClawForceStack extends cdk.Stack {
       allowedCidr,
     });
 
+    // EFS: Persistent data storage (survives destroy+deploy cycles)
+    const efsFileSystemId =
+      props.efsFileSystemId ?? (this.node.tryGetContext('efsFileSystemId') as string | undefined);
+
+    const efsConstruct = new ClawForceEfs(this, 'Efs', {
+      vpc,
+      instanceSecurityGroup: networking.securityGroup,
+      existingFileSystemId: efsFileSystemId,
+    });
+
+    // Construct EFS DNS name for NFS mount in UserData
+    const efsDnsName = `${efsConstruct.fileSystemId}.efs.${this.region}.amazonaws.com`;
+
     // Compute: EC2 + EBS + User Data with all PoC fixes + CloudWatch Agent
     // When ALB is enabled, deferStart=true so we can inject ALB CORS config
     // before docker compose up (eliminates CORS gap on fresh instances).
@@ -98,6 +114,7 @@ export class ClawForceStack extends cdk.Stack {
       cloudWatchAgentConfig: monitoring.getAgentConfig(),
       feishu,
       hooksToken,
+      efsDnsName,
       deferStart: enableAlb,
     });
 
@@ -176,6 +193,12 @@ export class ClawForceStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SshCommand', {
       value: `ssh -i <your-key>.pem ubuntu@${compute.instance.instancePublicIp}`,
       description: 'SSH connection command',
+    });
+
+    new cdk.CfnOutput(this, 'EfsFileSystemId', {
+      value: efsConstruct.fileSystemId,
+      description:
+        'EFS filesystem ID — save to cdk.json as "efsFileSystemId" to persist data across destroy+deploy',
     });
 
     if (albConstruct) {

@@ -7,7 +7,7 @@
 ```
 claw-force/
 ├── infra/           # AWS CDK 基础设施（TypeScript）— 详见 infra/.claude/CLAUDE.md
-│   ├── lib/constructs/  # L3 Construct（networking/compute/alb/waf/iam/monitoring）
+│   ├── lib/constructs/  # L3 Construct（networking/compute/alb/waf/iam/monitoring/efs）
 │   ├── lib/stacks/      # ClawForceStack（单 Stack 组合所有 Construct）
 │   ├── assets/          # docker-compose.yml（openclaw.json 由 TypeScript 动态生成）
 │   └── test/            # Jest + CDK Assertions + CDK Nag
@@ -30,7 +30,7 @@ claw-force/
 
 ```bash
 # infra/ 目录下执行
-pnpm test                    # 93 tests（Jest + CDK Assertions + Nag）
+pnpm test                    # 113 tests（Jest + CDK Assertions + Nag）
 pnpm lint && pnpm format:check && pnpm typecheck  # 代码质量三件套
 pnpm cdk synth               # 合成 CloudFormation
 pnpm cdk diff                # 查看变更
@@ -73,6 +73,7 @@ pnpm cdk destroy --force     # 销毁（UserData 变更必须 destroy+deploy）
 |------|------|
 | 跨区域 Inference Profile | `us.` 前缀路由到任意 US 区域，IAM 必须用 `arn:aws:bedrock:*::foundation-model/*` |
 | IMDSv2 | hop limit ≥ 2（Docker 容器）；必须先 PUT 获取 token 再 GET |
+| EFS 数据持久化 | EFS 用 `RETAIN` 策略；首次部署后将 EFS ID 保存到 `cdk.json` 的 `efsFileSystemId` |
 
 # Git 规则
 

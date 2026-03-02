@@ -17,9 +17,9 @@ describe('ClawForceStack - ALB mode (default)', () => {
     template.resourceCountIs('AWS::EC2::Instance', 1);
   });
 
-  test('creates two security groups (instance + ALB)', () => {
-    // Networking SG (SSH + Gateway from ALB) + ALB SG (80/443 from internet)
-    template.resourceCountIs('AWS::EC2::SecurityGroup', 2);
+  test('creates three security groups (instance + ALB + EFS)', () => {
+    // Networking SG + ALB SG + EFS SG (NFS from instance)
+    template.resourceCountIs('AWS::EC2::SecurityGroup', 3);
   });
 
   test('creates internet-facing ALB', () => {
@@ -95,6 +95,21 @@ describe('ClawForceStack - ALB mode (default)', () => {
   test('outputs Control UI URL via ALB', () => {
     template.hasOutput('ControlUiUrl', {});
   });
+
+  test('creates EFS filesystem with RETAIN policy', () => {
+    template.resourceCountIs('AWS::EFS::FileSystem', 1);
+    template.hasResource('AWS::EFS::FileSystem', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+      Properties: {
+        Encrypted: true,
+      },
+    });
+  });
+
+  test('outputs EFS filesystem ID', () => {
+    template.hasOutput('EfsFileSystemId', {});
+  });
 });
 
 describe('ClawForceStack - direct mode (enableAlb=false)', () => {
@@ -113,8 +128,9 @@ describe('ClawForceStack - direct mode (enableAlb=false)', () => {
     template.resourceCountIs('AWS::EC2::Instance', 1);
   });
 
-  test('creates only one security group (instance only)', () => {
-    template.resourceCountIs('AWS::EC2::SecurityGroup', 1);
+  test('creates two security groups (instance + EFS)', () => {
+    // Networking SG + EFS SG (no ALB SG in direct mode)
+    template.resourceCountIs('AWS::EC2::SecurityGroup', 2);
   });
 
   test('does not create ALB', () => {

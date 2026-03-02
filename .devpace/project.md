@@ -32,6 +32,8 @@
     - [CR-005] 🚀 CDK 基础设施自动化测试覆盖（released via REL-001）
   - [PF-010] 🚀 CDK 代码质量与工程实践 — ESLint/Prettier 工具链、cdk-nag 合规、目录重构、测试倍增 <!-- source: user -->
     - [CR-006] 🚀 CDK 基础设施全面优化（released via REL-002）
+  - [PF-014] 🆕 03-02 会话数据持久化 — EFS 挂载实现 OpenClaw 数据跨 destroy+deploy 持久化 <!-- source: user -->
+    - [CR-013] 🔄 EFS 持久化存储 Construct + UserData 挂载（in_review）
 - [BR-004] AI 员工业务场景集成 <!-- source: user -->
   - [PF-011] ✅ 部署验证与对话功能恢复 — cdk deploy 端到端验证，确认 CR-007/008/009 修复后 OpenClaw 对话功能正常 <!-- source: claude -->
     - [CR-010] ✅ 部署验证（代码状态确认，97→108 tests 通过）

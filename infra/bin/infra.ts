@@ -37,4 +37,7 @@ new ClawForceStack(app, 'ClawForceStack', {
   // Network security (ALB + WAF)
   enableAlb,
   certificateArn: app.node.tryGetContext('certificateArn'),
+
+  // Data persistence (EFS)
+  efsFileSystemId: app.node.tryGetContext('efsFileSystemId'),
 });

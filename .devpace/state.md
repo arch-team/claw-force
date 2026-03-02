@@ -8,8 +8,8 @@
 
 **迭代目标**：通过飞书 Bot 集成验证 ClawForce 端到端可用性，从基础设施代码走向实际业务场景
 
-**当前工作**：CR-011（飞书 CDK 配置）+ CR-012（MoS 定义）in_review，待人类审批
+**当前工作**：CR-013（EFS 持久化存储）in_review；CR-011/CR-012 已部署验证通过
 
-**下一步**：审批通过后 → cdk deploy 部署 → 飞书 Bot 配置（填入 App ID/Secret）→ 端到端验证
+**下一步**：CR-013 审批 → cdk deploy 更新（添加 EFS）→ 保存 EFS ID 到 cdk.json → 验证数据持久化
 
 <!-- devpace-version: 1.6.0 -->

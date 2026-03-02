@@ -49,6 +49,8 @@ export interface UserDataParams {
   readonly feishu?: FeishuConfig;
   /** Hooks API token — omit to disable hooks endpoint (POST /hooks/agent) */
   readonly hooksToken?: string;
+  /** EFS DNS name for persistent data mount (e.g. fs-xxx.efs.us-west-2.amazonaws.com) */
+  readonly efsDnsName?: string;
 }
 
 /** Bedrock model presets for OpenClaw provider catalog */
@@ -100,6 +102,7 @@ export function buildUserDataSetupCommands(params: UserDataParams): string[] {
     ...preamble(),
     ...systemSetup(),
     ...dockerInstall(),
+    ...efsMount(params.efsDnsName),
     ...openClawDeploy(params),
     ...ufwFirewall(),
     ...cloudWatchAgent(params.cloudWatchAgentConfig),
@@ -268,6 +271,9 @@ function openClawDeploy(params: UserDataParams): string[] {
     'apt-get install -y git gettext-base',
     'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
     '',
+    '# Patch: skip plugin-sdk DTS build (upstream TS error in telegram module, not needed at runtime)',
+    "su - ubuntu -c \"cd ~/openclaw-src && sed -i 's|tsc -p tsconfig.plugin-sdk.dts.json|true|' package.json\"",
+    '',
     '# Build Docker image from source',
     'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
     '',
@@ -295,6 +301,30 @@ function openClawDeploy(params: UserDataParams): string[] {
     'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace /home/ubuntu/openclaw/logs',
     'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     'chmod 600 /home/ubuntu/openclaw/.env',
+    '',
+  ];
+}
+
+/**
+ * Mount EFS at /home/ubuntu/openclaw/ for data persistence.
+ * When mounted, all OpenClaw data (workspace, agents, sessions) lives on EFS
+ * and survives instance termination. Fresh config files are overwritten each deploy.
+ */
+function efsMount(efsDnsName?: string): string[] {
+  if (!efsDnsName) return [];
+  return [
+    '# === EFS Data Persistence ===',
+    '# Mount EFS so OpenClaw data survives instance termination',
+    'apt-get install -y nfs-common',
+    'mkdir -p /home/ubuntu/openclaw',
+    '# Retry mount — EFS mount target may take time to propagate',
+    'for i in $(seq 1 30); do',
+    `  mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport ${efsDnsName}:/ /home/ubuntu/openclaw && break`,
+    '  echo "EFS mount attempt $i/30 failed, retrying in 10s..."',
+    '  sleep 10',
+    'done',
+    '# Persist mount across reboots',
+    `echo "${efsDnsName}:/ /home/ubuntu/openclaw nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport,_netdev 0 0" >> /etc/fstab`,
     '',
   ];
 }

@@ -30,6 +30,8 @@ export interface ClawForceComputeProps {
   readonly feishu?: FeishuConfig;
   /** Hooks API token — omit to disable hooks endpoint (POST /hooks/agent) */
   readonly hooksToken?: string;
+  /** EFS DNS name for persistent data mount (omit to use local EBS only) */
+  readonly efsDnsName?: string;
   /** If true, use setup-only UserData (stack will add start commands after ALB config) */
   readonly deferStart?: boolean;
 }
@@ -69,6 +71,7 @@ export class ClawForceCompute extends Construct {
       cloudWatchAgentConfig: props.cloudWatchAgentConfig,
       feishu: props.feishu,
       hooksToken: props.hooksToken,
+      efsDnsName: props.efsDnsName,
     };
     userData.addCommands(
       ...(props.deferStart

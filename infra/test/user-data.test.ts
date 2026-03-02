@@ -251,3 +251,43 @@ describe('buildAlbCorsCommands', () => {
     expect(joined).toContain('openclaw.json');
   });
 });
+
+describe('buildUserDataCommands with EFS', () => {
+  const baseParams = {
+    bedrockRegion: 'us-east-1',
+    bedrockModelId: 'us.anthropic.claude-sonnet-4-6',
+    gatewayToken: 'test-token-123',
+  };
+
+  test('includes EFS mount commands when efsDnsName is provided', () => {
+    const commands = buildUserDataCommands({
+      ...baseParams,
+      efsDnsName: 'fs-12345.efs.us-west-2.amazonaws.com',
+    });
+    const joined = commands.join('\n');
+    expect(joined).toContain('nfs-common');
+    expect(joined).toContain('mount -t nfs4');
+    expect(joined).toContain('fs-12345.efs.us-west-2.amazonaws.com');
+    expect(joined).toContain('/etc/fstab');
+  });
+
+  test('EFS mount appears before OpenClaw deploy', () => {
+    const commands = buildUserDataCommands({
+      ...baseParams,
+      efsDnsName: 'fs-99999.efs.us-east-1.amazonaws.com',
+    });
+    const joined = commands.join('\n');
+    const efsIndex = joined.indexOf('nfs-common');
+    const deployIndex = joined.indexOf('OpenClaw Deployment');
+    expect(efsIndex).toBeGreaterThan(-1);
+    expect(deployIndex).toBeGreaterThan(-1);
+    expect(efsIndex).toBeLessThan(deployIndex);
+  });
+
+  test('no EFS commands when efsDnsName is omitted', () => {
+    const commands = buildUserDataCommands(baseParams);
+    const joined = commands.join('\n');
+    expect(joined).not.toContain('nfs-common');
+    expect(joined).not.toContain('mount -t nfs4');
+  });
+});
