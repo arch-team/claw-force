@@ -267,17 +267,7 @@ function openClawDeploy(params: UserDataParams): string[] {
   });
 
   return [
-    '# === OpenClaw Deployment (build from source) ===',
-    'apt-get install -y git gettext-base',
-    'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
-    '',
-    '# Patch: skip plugin-sdk DTS build (upstream TS error in telegram module, not needed at runtime)',
-    "su - ubuntu -c \"cd ~/openclaw-src && sed -i 's|tsc -p tsconfig.plugin-sdk.dts.json|true|' package.json\"",
-    '',
-    '# Build Docker image from source',
-    'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
-    '',
-    '# Create deployment directory',
+    '# === OpenClaw Config (write BEFORE Docker build so EFS config is always fresh) ===',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace /home/ubuntu/openclaw/logs',
     '',
     '# Write OpenClaw config with Bedrock provider (api: bedrock-converse-stream, auth: aws-sdk)',
@@ -301,6 +291,16 @@ function openClawDeploy(params: UserDataParams): string[] {
     'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace /home/ubuntu/openclaw/logs',
     'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     'chmod 600 /home/ubuntu/openclaw/.env',
+    '',
+    '# === OpenClaw Docker Image (build from source) ===',
+    'apt-get install -y git gettext-base',
+    'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
+    '',
+    '# Patch: skip plugin-sdk DTS build (upstream TS error in telegram module, not needed at runtime)',
+    "su - ubuntu -c \"cd ~/openclaw-src && sed -i 's|tsc -p tsconfig.plugin-sdk.dts.json|true|' package.json\"",
+    '',
+    '# Build Docker image from source',
+    'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
     '',
   ];
 }

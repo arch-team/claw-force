@@ -271,17 +271,20 @@ describe('buildUserDataCommands with EFS', () => {
     expect(joined).toContain('/etc/fstab');
   });
 
-  test('EFS mount appears before OpenClaw deploy', () => {
+  test('EFS mount appears before OpenClaw config and Docker build', () => {
     const commands = buildUserDataCommands({
       ...baseParams,
       efsDnsName: 'fs-99999.efs.us-east-1.amazonaws.com',
     });
     const joined = commands.join('\n');
     const efsIndex = joined.indexOf('nfs-common');
-    const deployIndex = joined.indexOf('OpenClaw Deployment');
+    const configIndex = joined.indexOf('OpenClaw Config');
+    const buildIndex = joined.indexOf('OpenClaw Docker Image');
     expect(efsIndex).toBeGreaterThan(-1);
-    expect(deployIndex).toBeGreaterThan(-1);
-    expect(efsIndex).toBeLessThan(deployIndex);
+    expect(configIndex).toBeGreaterThan(-1);
+    expect(buildIndex).toBeGreaterThan(-1);
+    expect(efsIndex).toBeLessThan(configIndex);
+    expect(configIndex).toBeLessThan(buildIndex);
   });
 
   test('no EFS commands when efsDnsName is omitted', () => {
