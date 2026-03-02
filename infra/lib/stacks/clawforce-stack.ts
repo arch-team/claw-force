@@ -10,7 +10,12 @@ import { ClawForceWaf } from '../constructs/waf';
 import { ClawForceMonitoring } from '../constructs/monitoring';
 import { ClawForceEfs } from '../constructs/efs';
 import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
-import { buildAlbCorsCommands, startOpenClawCommands, FeishuConfig } from '../constructs/user-data';
+import {
+  buildAlbCorsCommands,
+  buildOpenClawBuildCommands,
+  startOpenClawCommands,
+  FeishuConfig,
+} from '../constructs/user-data';
 
 /**
  * Token fragment for auto-authentication.
@@ -144,15 +149,16 @@ export class ClawForceStack extends cdk.Stack {
         albArn: albConstruct.alb.loadBalancerArn,
       });
 
-      // Configure Gateway for ALB mode (CR-008):
-      // 1. CORS: inject concrete ALB DNS (wildcard "*" not supported by OpenClaw)
-      // 2. Trusted Proxies: ALB internal IP so OpenClaw treats proxied requests as local
-      // These commands run BEFORE docker compose up (deferStart=true above),
-      // so the container starts with correct config — no restart needed.
+      // Three-phase UserData injection (prevents CORS drift):
+      //   Phase 1: buildUserDataSetupCommands() — system + config write (already done above)
+      //   Phase 2: CORS patch — inject concrete ALB DNS BEFORE Docker build
+      //   Phase 3: Docker build + start — can fail without affecting CORS
       const albDns = albConstruct.alb.loadBalancerDnsName;
       const protocol = props.certificateArn ? 'https' : 'http';
       compute.instance.userData.addCommands(
         ...buildAlbCorsCommands(albDns, protocol),
+        '',
+        ...buildOpenClawBuildCommands(),
         '',
         '# === Start OpenClaw (after all config is finalized) ===',
         ...startOpenClawCommands(),

@@ -81,10 +81,11 @@ const BEDROCK_MODELS = [
   },
 ];
 
-/** Build the complete UserData command list */
+/** Build the complete UserData command list (direct mode — no ALB CORS injection) */
 export function buildUserDataCommands(params: UserDataParams): string[] {
   return [
     ...buildUserDataSetupCommands(params),
+    ...buildOpenClawBuildCommands(),
     ...startOpenClawCommands(),
     '',
     'echo "ClawForce OpenClaw setup complete at $(date)"',
@@ -92,10 +93,11 @@ export function buildUserDataCommands(params: UserDataParams): string[] {
 }
 
 /**
- * Build setup commands (everything BEFORE docker compose up).
+ * Build setup commands: system prep + config write (NO Docker build, NO container start).
  *
- * Use this when the stack needs to inject additional config (e.g., ALB CORS)
- * between setup and container start. Follow with startOpenClawCommands().
+ * In ALB mode, the stack injects CORS patch AFTER this, THEN calls
+ * buildOpenClawBuildCommands() + startOpenClawCommands(). This ensures
+ * CORS is always applied regardless of Docker build outcome.
  */
 export function buildUserDataSetupCommands(params: UserDataParams): string[] {
   return [
@@ -103,9 +105,25 @@ export function buildUserDataSetupCommands(params: UserDataParams): string[] {
     ...systemSetup(),
     ...dockerInstall(),
     ...efsMount(params.efsDnsName),
-    ...openClawDeploy(params),
+    ...openClawConfig(params),
     ...ufwFirewall(),
     ...cloudWatchAgent(params.cloudWatchAgentConfig),
+  ];
+}
+
+/** Clone OpenClaw source, patch upstream build issues, and build Docker image. */
+export function buildOpenClawBuildCommands(): string[] {
+  return [
+    '# === OpenClaw Docker Image (build from source) ===',
+    'apt-get install -y git gettext-base',
+    'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
+    '',
+    '# Patch: skip plugin-sdk DTS build (upstream TS error in telegram module, not needed at runtime)',
+    'su - ubuntu -c "cd ~/openclaw-src && sed -i \'s|tsc -p tsconfig.plugin-sdk.dts.json|true|\' package.json"',
+    '',
+    '# Build Docker image from source',
+    'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
+    '',
   ];
 }
 
@@ -256,7 +274,8 @@ function buildOpenClawConfig(params: {
   return JSON.stringify(config, null, 2);
 }
 
-function openClawDeploy(params: UserDataParams): string[] {
+/** Write OpenClaw config files (openclaw.json, docker-compose.yml, .env). No build. */
+function openClawConfig(params: UserDataParams): string[] {
   const composeContent = fs.readFileSync(path.join(ASSETS_DIR, 'docker-compose.yml'), 'utf-8');
   const configJson = buildOpenClawConfig({
     bedrockRegion: params.bedrockRegion,
@@ -267,7 +286,7 @@ function openClawDeploy(params: UserDataParams): string[] {
   });
 
   return [
-    '# === OpenClaw Config (write BEFORE Docker build so EFS config is always fresh) ===',
+    '# === OpenClaw Config (written early so CORS patch can follow immediately) ===',
     'mkdir -p /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace /home/ubuntu/openclaw/logs',
     '',
     '# Write OpenClaw config with Bedrock provider (api: bedrock-converse-stream, auth: aws-sdk)',
@@ -291,16 +310,6 @@ function openClawDeploy(params: UserDataParams): string[] {
     'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace /home/ubuntu/openclaw/logs',
     'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
     'chmod 600 /home/ubuntu/openclaw/.env',
-    '',
-    '# === OpenClaw Docker Image (build from source) ===',
-    'apt-get install -y git gettext-base',
-    'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
-    '',
-    '# Patch: skip plugin-sdk DTS build (upstream TS error in telegram module, not needed at runtime)',
-    "su - ubuntu -c \"cd ~/openclaw-src && sed -i 's|tsc -p tsconfig.plugin-sdk.dts.json|true|' package.json\"",
-    '',
-    '# Build Docker image from source',
-    'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
     '',
   ];
 }
