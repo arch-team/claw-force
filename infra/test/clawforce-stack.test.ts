@@ -64,13 +64,8 @@ describe('ClawForceStack - ALB mode (default)', () => {
     template.resourceCountIs('AWS::IAM::InstanceProfile', 2);
   });
 
-  test('enforces IMDSv2 hop limit 2 for Docker container access', () => {
-    // CDK puts HttpTokens in LaunchTemplate, HttpPutResponseHopLimit on Instance via override
-    template.hasResourceProperties('AWS::EC2::Instance', {
-      MetadataOptions: Match.objectLike({
-        HttpPutResponseHopLimit: 2,
-      }),
-    });
+  test('enforces IMDSv2 with default hop limit (no Docker override)', () => {
+    // No HttpPutResponseHopLimit override on Instance (direct install, no Docker)
     // requireImdsv2 creates a LaunchTemplate with HttpTokens
     template.resourceCountIs('AWS::EC2::LaunchTemplate', 1);
   });

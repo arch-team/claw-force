@@ -9,13 +9,12 @@ claw-force/
 ├── infra/           # AWS CDK 基础设施（TypeScript）— 详见 infra/.claude/CLAUDE.md
 │   ├── lib/constructs/  # L3 Construct（networking/compute/alb/waf/iam/monitoring/efs）
 │   ├── lib/stacks/      # ClawForceStack（单 Stack 组合所有 Construct）
-│   ├── assets/          # docker-compose.yml（openclaw.json 由 TypeScript 动态生成）
 │   └── test/            # Jest + CDK Assertions + CDK Nag
 ├── openclaw-fork/   # OpenClaw 上游 fork（Node.js/TypeScript）— 详见 openclaw-fork/CLAUDE.md
 └── .devpace/        # DevPace 开发节奏管理（CR/PF/BR 价值链）
 ```
 
-**关系**：`infra/` 的 UserData 从源码 build OpenClaw Docker 镜像并部署到 EC2，通过 ALB + WAF 暴露服务。
+**关系**：`infra/` 的 UserData 直接安装 Node.js + pnpm，从源码构建 OpenClaw 并以 systemd 服务部署到 EC2，通过 ALB + WAF 暴露服务。AI Agent 拥有完整的 EC2 系统级访问权限。
 
 ## 当前部署
 
@@ -54,7 +53,7 @@ pnpm cdk destroy --force     # 销毁（UserData 变更必须 destroy+deploy）
 
 - **单次写入**：配置文件只写一次且包含完整内容，禁止分步修补（写 → 补丁 → 再补丁）
 - **动态生成**：`openclaw.json` 由 TypeScript 在 synth 时生成（`buildOpenClawConfig()`），不使用静态资产文件
-- **执行顺序**：所有配置写入必须在 `docker compose up` 之前完成
+- **执行顺序**：所有配置写入必须在 `systemctl start openclaw-gateway` 之前完成
 - **UserData 只在首次启动执行**：CloudFormation 更新 UserData 不触发 instance 重建，必须 destroy+deploy
 
 ## OpenClaw 约束
@@ -72,8 +71,9 @@ pnpm cdk destroy --force     # 销毁（UserData 变更必须 destroy+deploy）
 | 约束 | 规则 |
 |------|------|
 | 跨区域 Inference Profile | `us.` 前缀路由到任意 US 区域，IAM 必须用 `arn:aws:bedrock:*::foundation-model/*` |
-| IMDSv2 | hop limit ≥ 2（Docker 容器）；必须先 PUT 获取 token 再 GET |
+| IMDSv2 | hop limit=1（直接安装，无 Docker）；必须先 PUT 获取 token 再 GET |
 | EFS 数据持久化 | EFS 用 `RETAIN` 策略；首次部署后将 EFS ID 保存到 `cdk.json` 的 `efsFileSystemId` |
+| 部署方式 | Node.js 22 直接安装 + systemd 服务管理（非 Docker），AI Agent 拥有系统级访问权限 |
 
 # Git 与分支策略
 

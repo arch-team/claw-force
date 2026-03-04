@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { OPENCLAW_PORTS, BEDROCK_PROVIDER_KEY } from '../config/constants';
 
 /**
@@ -8,19 +6,17 @@ import { OPENCLAW_PORTS, BEDROCK_PROVIDER_KEY } from '../config/constants';
  * Generates the shell commands for instance bootstrap, separated into
  * logical sections for readability and testability.
  *
- * Docker deployment files:
- * - assets/docker-compose.yml  (read at CDK synth time, uses ${VAR} with .env file)
- * - openclaw.json              (generated dynamically with Bedrock provider config)
+ * Direct install deployment (no Docker):
+ * - Node.js 22 LTS installed via NodeSource
+ * - OpenClaw built from source with pnpm
+ * - systemd service manages the gateway process
+ * - openclaw.json generated dynamically with Bedrock provider config
  *
  * PoC lessons applied:
  * - Ubuntu 24.04 uses ssh.service not sshd.service (#2)
- * - Docker Compose override injects AWS_REGION (#10)
  * - Bedrock uses Inference Profile format model ID (#5)
  * - Pre-create OpenClaw config for gateway.mode=local (#7/#8/#9)
  */
-
-/** Path to the assets directory (resolved relative to this file) */
-const ASSETS_DIR = path.resolve(__dirname, '../../assets');
 
 /** Feishu channel configuration for OpenClaw */
 export interface FeishuConfig {
@@ -86,6 +82,7 @@ export function buildUserDataCommands(params: UserDataParams): string[] {
   return [
     ...buildUserDataSetupCommands(params),
     ...buildOpenClawBuildCommands(),
+    ...createOpenClawService(),
     ...startOpenClawCommands(),
     '',
     'echo "ClawForce OpenClaw setup complete at $(date)"',
@@ -93,17 +90,17 @@ export function buildUserDataCommands(params: UserDataParams): string[] {
 }
 
 /**
- * Build setup commands: system prep + config write (NO Docker build, NO container start).
+ * Build setup commands: system prep + config write (NO build, NO service start).
  *
  * In ALB mode, the stack injects CORS patch AFTER this, THEN calls
- * buildOpenClawBuildCommands() + startOpenClawCommands(). This ensures
- * CORS is always applied regardless of Docker build outcome.
+ * buildOpenClawBuildCommands() + createOpenClawService() + startOpenClawCommands().
+ * This ensures CORS is always applied regardless of build outcome.
  */
 export function buildUserDataSetupCommands(params: UserDataParams): string[] {
   return [
     ...preamble(),
     ...systemSetup(),
-    ...dockerInstall(),
+    ...nodeInstall(),
     ...efsMount(params.efsDnsName),
     ...openClawConfig(params),
     ...ufwFirewall(),
@@ -111,18 +108,18 @@ export function buildUserDataSetupCommands(params: UserDataParams): string[] {
   ];
 }
 
-/** Clone OpenClaw source, patch upstream build issues, and build Docker image. */
+/** Clone OpenClaw source, patch upstream build issues, and build with pnpm. */
 export function buildOpenClawBuildCommands(): string[] {
   return [
-    '# === OpenClaw Docker Image (build from source) ===',
-    'apt-get install -y git gettext-base',
+    '# === OpenClaw Build (from source, direct install) ===',
+    'apt-get install -y git',
     'su - ubuntu -c "git clone --depth 1 https://github.com/openclaw/openclaw.git ~/openclaw-src"',
     '',
     '# Patch: skip plugin-sdk DTS build (upstream TS error in telegram module, not needed at runtime)',
     'su - ubuntu -c "cd ~/openclaw-src && sed -i \'s|tsc -p tsconfig.plugin-sdk.dts.json|true|\' package.json"',
     '',
-    '# Build Docker image from source',
-    'su - ubuntu -c "cd ~/openclaw-src && docker build -t openclaw:local -f Dockerfile ."',
+    '# Build from source with pnpm (limit memory for t3.medium)',
+    'su - ubuntu -c "cd ~/openclaw-src && export NODE_OPTIONS=--max-old-space-size=2048 && pnpm install --frozen-lockfile && pnpm build"',
     '',
   ];
 }
@@ -151,9 +148,37 @@ export function buildAlbCorsCommands(albDns: string, protocol: string): string[]
   ];
 }
 
-/** Commands to start the OpenClaw container. Call after all config is written. */
+/** Create systemd service unit for the OpenClaw gateway process. */
+export function createOpenClawService(): string[] {
+  return [
+    '# === OpenClaw systemd Service ===',
+    `cat > /etc/systemd/system/openclaw-gateway.service << 'SYSTEMD'`,
+    '[Unit]',
+    'Description=OpenClaw Gateway',
+    'After=network.target',
+    '',
+    '[Service]',
+    'Type=simple',
+    'User=ubuntu',
+    'Environment=HOME=/home/ubuntu',
+    'WorkingDirectory=/home/ubuntu/openclaw-src',
+    'EnvironmentFile=/home/ubuntu/openclaw/.env',
+    `ExecStart=/usr/bin/node dist/index.js gateway --bind lan --port ${OPENCLAW_PORTS.GATEWAY}`,
+    'Restart=on-failure',
+    'RestartSec=5',
+    '',
+    '[Install]',
+    'WantedBy=multi-user.target',
+    'SYSTEMD',
+    'systemctl daemon-reload',
+    'systemctl enable openclaw-gateway',
+    '',
+  ];
+}
+
+/** Commands to start the OpenClaw gateway service. Call after all config is written. */
 export function startOpenClawCommands(): string[] {
-  return ['# === Start OpenClaw ===', 'su - ubuntu -c "cd ~/openclaw && docker compose up -d"', ''];
+  return ['# === Start OpenClaw ===', 'systemctl start openclaw-gateway', ''];
 }
 
 function preamble(): string[] {
@@ -178,18 +203,15 @@ function systemSetup(): string[] {
   ];
 }
 
-function dockerInstall(): string[] {
+function nodeInstall(): string[] {
   return [
-    '# === Docker Installation ===',
+    '# === Node.js 22 LTS + pnpm Installation ===',
     'apt-get update -y',
     'apt-get install -y ca-certificates curl gnupg',
-    'install -m 0755 -d /etc/apt/keyrings',
-    'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg',
-    'chmod a+r /etc/apt/keyrings/docker.gpg',
-    'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null',
-    'apt-get update -y',
-    'apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin',
-    'usermod -aG docker ubuntu',
+    'curl -fsSL https://deb.nodesource.com/setup_22.x | bash -',
+    'apt-get install -y nodejs',
+    'corepack enable',
+    'corepack prepare pnpm@latest --activate',
     '',
   ];
 }
@@ -215,7 +237,7 @@ function buildOpenClawConfig(params: {
       mode: 'local',
       auth: { token: params.gatewayToken },
       controlUi: {
-        // Placeholder — ALB mode overwrites with concrete origin before docker start.
+        // Placeholder — ALB mode overwrites with concrete origin before service start.
         // Direct mode keeps this; OpenClaw rejects "*" so direct mode uses instance IP.
         allowedOrigins: ['*'],
         dangerouslyDisableDeviceAuth: true,
@@ -274,9 +296,8 @@ function buildOpenClawConfig(params: {
   return JSON.stringify(config, null, 2);
 }
 
-/** Write OpenClaw config files (openclaw.json, docker-compose.yml, .env). No build. */
+/** Write OpenClaw config files (openclaw.json, .env) and create config symlink. No build. */
 function openClawConfig(params: UserDataParams): string[] {
-  const composeContent = fs.readFileSync(path.join(ASSETS_DIR, 'docker-compose.yml'), 'utf-8');
   const configJson = buildOpenClawConfig({
     bedrockRegion: params.bedrockRegion,
     bedrockModelId: params.bedrockModelId,
@@ -294,11 +315,6 @@ function openClawConfig(params: UserDataParams): string[] {
     configJson,
     'OCCONFIG',
     '',
-    '# Write docker-compose.yml',
-    `cat > /home/ubuntu/openclaw/docker-compose.yml << 'COMPOSE'`,
-    composeContent.trim(),
-    'COMPOSE',
-    '',
     '# Write .env with deployment-specific values',
     `cat > /home/ubuntu/openclaw/.env << ENV`,
     `AWS_REGION=${params.bedrockRegion}`,
@@ -306,9 +322,11 @@ function openClawConfig(params: UserDataParams): string[] {
     `OPENCLAW_GATEWAY_TOKEN=${params.gatewayToken}`,
     'ENV',
     '',
+    '# Symlink config dir so OpenClaw finds ~/.openclaw (direct install uses HOME=/home/ubuntu)',
+    'ln -sfn /home/ubuntu/openclaw/config /home/ubuntu/.openclaw',
+    '',
     '# Set ownership and restrict .env permissions',
-    'chown -R 1000:1000 /home/ubuntu/openclaw/config /home/ubuntu/openclaw/workspace /home/ubuntu/openclaw/logs',
-    'chown -R ubuntu:ubuntu /home/ubuntu/openclaw/docker-compose.yml /home/ubuntu/openclaw/.env',
+    'chown -R ubuntu:ubuntu /home/ubuntu/openclaw /home/ubuntu/.openclaw',
     'chmod 600 /home/ubuntu/openclaw/.env',
     '',
   ];
@@ -341,8 +359,6 @@ function efsMount(efsDnsName?: string): string[] {
 function ufwFirewall(): string[] {
   return [
     '# === UFW Firewall ===',
-    '# Fix: Docker port mapping requires FORWARD ACCEPT policy (UFW default is DROP)',
-    'sed -i \'s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="ACCEPT"/\' /etc/default/ufw',
     'ufw allow 22/tcp',
     `ufw allow ${OPENCLAW_PORTS.GATEWAY}/tcp`,
     'ufw --force enable',

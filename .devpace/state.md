@@ -8,8 +8,8 @@
 
 **迭代目标**：通过飞书 Bot 集成验证 ClawForce 端到端可用性，从基础设施代码走向实际业务场景
 
-**当前工作**：CR-013（EFS 持久化存储）in_review；CR-011/CR-012 已部署验证通过
+**当前工作**：CR-014（Docker → EC2 直接安装重构）审批通过 merged；CR-011/CR-012/CR-013/CR-014 全部 merged；Iter-2 4/4 PF 完成
 
-**下一步**：CR-013 审批 → cdk deploy 更新（添加 EFS）→ 保存 EFS ID 到 cdk.json → 验证数据持久化
+**下一步**：cdk destroy + deploy（UserData 变更）→ SSH 验证 systemd 服务 → 端到端验证（MoS 指标度量）→ 处理 RISK-001（飞书凭据泄露）
 
 <!-- devpace-version: 1.6.0 -->
