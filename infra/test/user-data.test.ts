@@ -63,6 +63,10 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('ln -sfn /home/ubuntu/openclaw/config /home/ubuntu/.openclaw');
   });
 
+  test('creates /home/node symlink for Docker-era EFS session compatibility', () => {
+    expect(joined).toContain('ln -sfn /home/ubuntu /home/node');
+  });
+
   test('does not modify UFW FORWARD policy', () => {
     expect(joined).not.toContain('DEFAULT_FORWARD_POLICY');
     expect(joined).not.toContain('FORWARD');

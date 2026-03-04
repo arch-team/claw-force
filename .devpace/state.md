@@ -8,8 +8,8 @@
 
 **迭代目标**：通过飞书 Bot 集成验证 ClawForce 端到端可用性，从基础设施代码走向实际业务场景
 
-**当前工作**：CR-014（Docker → EC2 直接安装重构）审批通过 merged；CR-011/CR-012/CR-013/CR-014 全部 merged；Iter-2 4/4 PF 完成
+**当前工作**：MoS 5/5 指标全部达标！部署成功率 100%、对话响应率 100%、延迟 493ms、飞书 WebSocket connected、检查清单 6/6
 
-**下一步**：cdk destroy + deploy（UserData 变更）→ SSH 验证 systemd 服务 → 端到端验证（MoS 指标度量）→ 处理 RISK-001（飞书凭据泄露）
+**下一步**：Iter-2 回顾（/pace-retro）→ Iter-3 规划（/pace-plan）→ 处理 RISK-001 残留（Git 历史清除 + SSM 迁移评估）
 
 <!-- devpace-version: 1.6.0 -->

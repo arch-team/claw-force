@@ -200,6 +200,9 @@ function systemSetup(): string[] {
     'sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin no/" /etc/ssh/sshd_config',
     'systemctl restart ssh.service',
     '',
+    '# Docker→direct-install compat: EFS sessions reference /home/node from Docker era',
+    'ln -sfn /home/ubuntu /home/node',
+    '',
   ];
 }
 

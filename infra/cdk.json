@@ -103,8 +103,8 @@
     "keyPairName": "openclaw-poc-key",
     "efsFileSystemId": "fs-05d000d003692f3d9",
 
-    "feishuAppId": "cli_a92ef55d4f38dbc8",
-    "feishuAppSecret": "jPfAmiUtSqVF0UOdeYZWMfNXJ5KQ4ji0",
+    "feishuAppId": "",
+    "feishuAppSecret": "",
 
     "bedrockRegion": "us-east-1",
     "bedrockModelId": "us.anthropic.claude-sonnet-4-6",
