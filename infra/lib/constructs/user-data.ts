@@ -164,7 +164,7 @@ export function createOpenClawService(): string[] {
     'WorkingDirectory=/home/ubuntu/openclaw-src',
     'EnvironmentFile=/home/ubuntu/openclaw/.env',
     `ExecStart=/usr/bin/node dist/index.js gateway --bind lan --port ${OPENCLAW_PORTS.GATEWAY}`,
-    'Restart=on-failure',
+    'Restart=always',
     'RestartSec=5',
     '',
     '[Install]',

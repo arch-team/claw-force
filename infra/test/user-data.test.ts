@@ -49,7 +49,7 @@ describe('buildUserDataCommands', () => {
     );
     expect(joined).toContain('User=ubuntu');
     expect(joined).toContain('Environment=HOME=/home/ubuntu');
-    expect(joined).toContain('Restart=on-failure');
+    expect(joined).toContain('Restart=always');
     expect(joined).toContain('EnvironmentFile=/home/ubuntu/openclaw/.env');
     expect(joined).toContain('systemctl daemon-reload');
     expect(joined).toContain('systemctl enable openclaw-gateway');
