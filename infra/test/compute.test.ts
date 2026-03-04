@@ -82,12 +82,10 @@ describe('ClawForceCompute', () => {
     });
   });
 
-  test('enforces IMDSv2 with hop limit 2 for Docker', () => {
-    template.hasResourceProperties('AWS::EC2::Instance', {
-      MetadataOptions: Match.objectLike({
-        HttpPutResponseHopLimit: 2,
-      }),
-    });
+  test('enforces IMDSv2 with default hop limit (no Docker)', () => {
+    // No HttpPutResponseHopLimit override needed — direct install, no Docker container layer
+    // requireImdsv2 creates a LaunchTemplate with HttpTokens (default hop=1)
+    template.resourceCountIs('AWS::EC2::LaunchTemplate', 1);
   });
 
   test('creates LaunchTemplate for IMDSv2 enforcement', () => {

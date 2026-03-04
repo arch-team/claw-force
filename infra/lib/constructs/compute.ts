@@ -37,12 +37,11 @@ export interface ClawForceComputeProps {
 }
 
 /**
- * EC2 compute construct for ClawForce OpenClaw deployment.
+ * EC2 compute construct for ClawForce OpenClaw deployment (direct install, no Docker).
  *
  * PoC lessons applied:
- * - IMDSv2 enforced with hop limit=2 for Docker container access (poc-report.md #4)
+ * - IMDSv2 enforced (CDK default hop limit=1, sufficient without Docker)
  * - Ubuntu 24.04 uses ssh.service not sshd.service (poc-report.md #2)
- * - Docker Compose override injects AWS_REGION (poc-report.md #10)
  * - Bedrock uses Inference Profile format model ID (poc-report.md #5)
  * - All descriptions ASCII-only (poc-report.md #1)
  */
@@ -97,16 +96,12 @@ export class ClawForceCompute extends Construct {
           }),
         },
       ],
-      // PoC fix #4: IMDSv2 enforced with hop limit=2 for Docker container access
+      // IMDSv2 enforced (hop limit=1 default, no Docker container layer)
       requireImdsv2: true,
       ...(props.keyPairName
         ? { keyPair: ec2.KeyPair.fromKeyPairName(this, 'KeyPair', props.keyPairName) }
         : {}),
     });
-
-    // Set IMDS hop limit to 2 (CDK's requireImdsv2 sets hop=1, we need 2 for Docker)
-    const cfnInstance = this.instance.node.defaultChild as ec2.CfnInstance;
-    cfnInstance.addPropertyOverride('MetadataOptions.HttpPutResponseHopLimit', 2);
 
     // CDK Nag suppressions (resource-level)
     NagSuppressions.addResourceSuppressions(

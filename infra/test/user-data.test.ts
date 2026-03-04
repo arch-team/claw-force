@@ -27,14 +27,56 @@ describe('buildUserDataCommands', () => {
     expect(joined).toContain('systemctl restart ssh.service');
   });
 
-  test('includes Docker installation', () => {
-    expect(joined).toContain('docker-ce');
-    expect(joined).toContain('docker-compose-plugin');
+  test('includes Node.js 22 installation via NodeSource', () => {
+    expect(joined).toContain('nodesource.com/setup_22.x');
+    expect(joined).toContain('apt-get install -y nodejs');
+    expect(joined).toContain('corepack enable');
+    expect(joined).toContain('corepack prepare pnpm@latest --activate');
   });
 
-  test('includes OpenClaw clone and build', () => {
+  test('includes OpenClaw source clone and pnpm build', () => {
     expect(joined).toContain('git clone --depth 1');
-    expect(joined).toContain('docker build -t openclaw:local');
+    expect(joined).toContain('pnpm install --frozen-lockfile');
+    expect(joined).toContain('pnpm build');
+  });
+
+  test('creates systemd service for OpenClaw gateway', () => {
+    expect(joined).toContain('openclaw-gateway.service');
+    expect(joined).toContain('[Unit]');
+    expect(joined).toContain('[Service]');
+    expect(joined).toContain(
+      'ExecStart=/usr/bin/node dist/index.js gateway --bind lan --port 18789',
+    );
+    expect(joined).toContain('User=ubuntu');
+    expect(joined).toContain('Environment=HOME=/home/ubuntu');
+    expect(joined).toContain('Restart=always');
+    expect(joined).toContain('EnvironmentFile=/home/ubuntu/openclaw/.env');
+    expect(joined).toContain('systemctl daemon-reload');
+    expect(joined).toContain('systemctl enable openclaw-gateway');
+  });
+
+  test('starts OpenClaw via systemctl', () => {
+    expect(joined).toContain('systemctl start openclaw-gateway');
+  });
+
+  test('creates symlink from .openclaw to EFS config', () => {
+    expect(joined).toContain('ln -sfn /home/ubuntu/openclaw/config /home/ubuntu/.openclaw');
+  });
+
+  test('creates /home/node symlink for Docker-era EFS session compatibility', () => {
+    expect(joined).toContain('ln -sfn /home/ubuntu /home/node');
+  });
+
+  test('does not modify UFW FORWARD policy', () => {
+    expect(joined).not.toContain('DEFAULT_FORWARD_POLICY');
+    expect(joined).not.toContain('FORWARD');
+  });
+
+  test('does not include Docker installation', () => {
+    expect(joined).not.toContain('docker-ce');
+    expect(joined).not.toContain('docker-compose-plugin');
+    expect(joined).not.toContain('docker build');
+    expect(joined).not.toContain('docker compose');
   });
 
   test('injects bedrockRegion into .env and Bedrock baseUrl', () => {
@@ -110,11 +152,6 @@ describe('buildUserDataCommands', () => {
 
   test('creates OpenClaw config with gateway mode local', () => {
     expect(joined).toContain('"mode": "local"');
-  });
-
-  test('reads docker-compose.yml from assets directory', () => {
-    expect(joined).toContain('openclaw-gateway');
-    expect(joined).toContain('${AWS_REGION}');
   });
 
   test('writes openclaw.json config directly (no envsubst needed)', () => {
@@ -271,7 +308,7 @@ describe('buildUserDataCommands with EFS', () => {
     expect(joined).toContain('/etc/fstab');
   });
 
-  test('EFS mount appears before OpenClaw config and Docker build', () => {
+  test('EFS mount appears before OpenClaw config and build', () => {
     const commands = buildUserDataCommands({
       ...baseParams,
       efsDnsName: 'fs-99999.efs.us-east-1.amazonaws.com',
@@ -279,7 +316,7 @@ describe('buildUserDataCommands with EFS', () => {
     const joined = commands.join('\n');
     const efsIndex = joined.indexOf('nfs-common');
     const configIndex = joined.indexOf('OpenClaw Config');
-    const buildIndex = joined.indexOf('OpenClaw Docker Image');
+    const buildIndex = joined.indexOf('OpenClaw Build');
     expect(efsIndex).toBeGreaterThan(-1);
     expect(configIndex).toBeGreaterThan(-1);
     expect(buildIndex).toBeGreaterThan(-1);

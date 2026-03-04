@@ -13,6 +13,7 @@ import { DEFAULTS, OPENCLAW_PORTS } from '../config/constants';
 import {
   buildAlbCorsCommands,
   buildOpenClawBuildCommands,
+  createOpenClawService,
   startOpenClawCommands,
   FeishuConfig,
 } from '../constructs/user-data';
@@ -151,14 +152,16 @@ export class ClawForceStack extends cdk.Stack {
 
       // Three-phase UserData injection (prevents CORS drift):
       //   Phase 1: buildUserDataSetupCommands() — system + config write (already done above)
-      //   Phase 2: CORS patch — inject concrete ALB DNS BEFORE Docker build
-      //   Phase 3: Docker build + start — can fail without affecting CORS
+      //   Phase 2: CORS patch — inject concrete ALB DNS BEFORE build
+      //   Phase 3: Build + systemd service + start — can fail without affecting CORS
       const albDns = albConstruct.alb.loadBalancerDnsName;
       const protocol = props.certificateArn ? 'https' : 'http';
       compute.instance.userData.addCommands(
         ...buildAlbCorsCommands(albDns, protocol),
         '',
         ...buildOpenClawBuildCommands(),
+        '',
+        ...createOpenClawService(),
         '',
         '# === Start OpenClaw (after all config is finalized) ===',
         ...startOpenClawCommands(),
